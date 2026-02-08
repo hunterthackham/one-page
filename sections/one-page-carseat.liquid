@@ -104,8 +104,7 @@
                   {% if media.preview_image %}
                     data-media-src="{{ media.preview_image | image_url: width: 2048 }}"
                   {% endif %}
-                  data-media-index="{{ forloop.index0 }}"
-                  {% unless media.id == active_media_id %}aria-hidden="true"{% endunless %}
+                  {% unless media.id == active_media_id %}hidden{% endunless %}
                 >
                   {% case media.media_type %}
                     {% when 'image' %}
@@ -239,6 +238,10 @@
               Price shown for selected pack size.
             </p>
           </div>
+
+          {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
+            <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
+            <input type="hidden" name="quantity" value="{{ default_pack_qty }}" data-quantity-input>
 
           {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
             <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>

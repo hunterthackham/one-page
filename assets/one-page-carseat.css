@@ -345,8 +345,6 @@
   gap: 8px;
   align-items: center;
   line-height: 1.2;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
 }
 .opc-inline-badge {
   font-size: 11px;
@@ -360,7 +358,6 @@
   color: var(--opc-muted);
   font-size: var(--opc-fs-200);
   line-height: 1.4;
-  text-wrap: balance;
 }
 .opc-pack-card__meta {
   color: #065f46;
