@@ -1,0 +1,70 @@
+{% assign sid = section.id %}
+
+<section class="cs-ugc" id="cs-ugc-{{ sid }}">
+  <div class="cs-ugc__head">
+    <h2 class="cs-h2">{{ section.settings.ugc_title | default: 'Real Customer Video Proof' }}</h2>
+    {% if section.settings.ugc_subtitle != blank %}
+      <p class="cs-muted">{{ section.settings.ugc_subtitle }}</p>
+    {% endif %}
+  </div>
+
+  <div class="cs-ugc__grid">
+
+    {% for i in (1..4) %}
+      {% liquid
+        assign video_key = 'ugc_video_' | append: i
+        assign image_key = 'ugc_image_' | append: i
+        assign url_key = 'ugc_link_' | append: i
+        assign cap_key = 'ugc_caption_' | append: i
+
+        assign ugc_video = section.settings[video_key]
+        assign ugc_image = section.settings[image_key]
+        assign ugc_link = section.settings[url_key]
+        assign ugc_caption = section.settings[cap_key]
+      %}
+
+      {% if ugc_video != blank or ugc_image != blank or ugc_link != blank or ugc_caption != blank %}
+        <article class="cs-ugc-card">
+          <div class="cs-ugc-media">
+            {% if ugc_video != blank %}
+              {{
+                ugc_video
+                | video_tag:
+                  autoplay: false,
+                  loop: false,
+                  muted: false,
+                  controls: true,
+                  playsinline: true
+              }}
+            {% elsif ugc_image != blank %}
+              <img
+                src="{{ ugc_image | image_url: width: 900 }}"
+                alt="{{ ugc_image.alt | escape }}"
+                loading="lazy"
+                width="{{ ugc_image.width }}"
+                height="{{ ugc_image.height }}"
+              >
+            {% else %}
+              <div class="cs-ugc-placeholder">Add video/image in section settings</div>
+            {% endif %}
+          </div>
+
+          <div class="cs-ugc-body">
+            {% if ugc_caption != blank %}
+              <p class="cs-ugc-caption">{{ ugc_caption }}</p>
+            {% endif %}
+
+            {% if ugc_link != blank %}
+              <p class="cs-ugc-source">
+                <a href="{{ ugc_link }}" target="_blank" rel="nofollow noopener noreferrer">
+                  View original post
+                </a>
+              </p>
+            {% endif %}
+          </div>
+        </article>
+      {% endif %}
+    {% endfor %}
+
+  </div>
+</section>
