@@ -1,0 +1,55 @@
+{% liquid
+  assign has_content = false
+  if video != blank or image != blank or link != blank or caption != blank
+    assign has_content = true
+  endif
+%}
+
+{% if has_content %}
+  <article class="opc-ugc-card" aria-label="UGC proof item {{ index }}">
+    <div class="opc-ugc-media">
+      {% if video != blank %}
+        {{
+          video
+          | video_tag:
+            controls: true,
+            autoplay: false,
+            loop: false,
+            muted: false,
+            preload: 'metadata',
+            playsinline: true
+        }}
+      {% elsif image != blank %}
+        {{
+          image
+          | image_url: width: 1200
+          | image_tag:
+            loading: 'lazy',
+            widths: '320, 480, 720, 960, 1200',
+            sizes: '(min-width: 990px) 25vw, 50vw',
+            alt: caption | default: 'UGC proof image'
+        }}
+      {% else %}
+        <div class="opc-media-placeholder">Add UGC video or image</div>
+      {% endif %}
+    </div>
+
+    <div class="opc-ugc-content">
+      {% if caption != blank %}
+        <p class="opc-ugc-caption">{{ caption }}</p>
+      {% endif %}
+
+      {% if link != blank %}
+        <a
+          class="opc-ugc-link"
+          href="{{ link }}"
+          target="_blank"
+          rel="nofollow noopener noreferrer"
+          aria-label="Open source link for UGC item {{ index }}"
+        >
+          View source
+        </a>
+      {% endif %}
+    </div>
+  </article>
+{% endif %}

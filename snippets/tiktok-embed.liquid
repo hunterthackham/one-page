@@ -1,0 +1,17 @@
+{% comment %}
+  File: snippets/tiktok-embed.liquid
+  Input: tiktok_url
+{% endcomment %}
+
+{% if tiktok_url != blank %}
+  <div class="cs-tiktok-card">
+    <blockquote class="tiktok-embed" cite="{{ tiktok_url }}" data-video-id="">
+      <section>
+        <a target="_blank" href="{{ tiktok_url }}">Watch on TikTok</a>
+      </section>
+    </blockquote>
+    <noscript>
+      <a href="{{ tiktok_url }}" target="_blank" rel="noopener">Open TikTok video</a>
+    </noscript>
+  </div>
+{% endif %}
