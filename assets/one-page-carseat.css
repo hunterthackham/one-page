@@ -269,17 +269,19 @@
 
 .opc-pack-grid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 .opc-pack-card {
   position: relative;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  align-content: start;
   border: 1px solid var(--opc-border);
   background: #fff;
   border-radius: var(--opc-r-md);
   padding: 12px 14px;
   cursor: pointer;
+  text-align: left;
 }
 .opc-pack-card input {
   position: absolute;
@@ -297,6 +299,7 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  line-height: 1.2;
 }
 .opc-inline-badge {
   font-size: 11px;
@@ -309,11 +312,13 @@
 .opc-pack-card__sub {
   color: var(--opc-muted);
   font-size: var(--opc-fs-200);
+  line-height: 1.4;
 }
 .opc-pack-card__meta {
   color: #065f46;
   font-size: var(--opc-fs-100);
   font-weight: 700;
+  line-height: 1.3;
 }
 
 .opc-btn {
@@ -458,6 +463,22 @@
   color: #0b4ab8;
   text-decoration: underline;
   text-underline-offset: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.opc-ugc-platform {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.opc-ugc-platform svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 .opc-fit {
@@ -505,12 +526,16 @@
   gap: 8px;
 }
 .opc-offer-card.is-featured {
-  border-color: var(--opc-primary);
-  box-shadow: var(--opc-sh-1);
+  border-color: #fcd34d;
+  background: #fffbeb;
+  box-shadow: none;
 }
 .opc-offer-card.is-active {
   border-color: var(--opc-primary);
   box-shadow: var(--opc-sh-2);
+}
+.opc-offer-card.is-featured.is-active {
+  background: #fff;
 }
 .opc-offer-card h3 {
   margin: 0;
