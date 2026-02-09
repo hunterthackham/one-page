@@ -52,6 +52,19 @@
         assign has_compare = true
       endif
 
+      assign uses_pack_option = false
+      for option_name in featured_product.options
+        if option_name != blank and option_name | downcase contains 'pack'
+          assign uses_pack_option = true
+          break
+        endif
+      endfor
+
+      assign pack_multiplier = default_pack_qty
+      if uses_pack_option
+        assign pack_multiplier = 1
+      endif
+
       assign has_ugc = false
       for i in (1..4)
         assign k_video = 'ugc_video_' | append: i
@@ -156,6 +169,15 @@
                 <div class="opc-media-placeholder">Add product media to show the hero gallery</div>
               </div>
             {% endif %}
+
+            {% if featured_product.media.size > 1 %}
+              <button type="button" class="opc-media-nav opc-media-nav--prev" data-media-prev aria-label="Previous image">
+                <span aria-hidden="true">‹</span>
+              </button>
+              <button type="button" class="opc-media-nav opc-media-nav--next" data-media-next aria-label="Next image">
+                <span aria-hidden="true">›</span>
+              </button>
+            {% endif %}
           </div>
 
           {% if featured_product.media.size > 1 %}
@@ -202,10 +224,10 @@
 
           <div class="opc-price-panel" aria-live="polite">
             <div class="opc-price-line">
-              <span class="opc-price" data-price>{{ current_variant.price | times: default_pack_qty | money }}</span>
+              <span class="opc-price" data-price>{{ current_variant.price | times: pack_multiplier | money }}</span>
               <span class="opc-compare{% unless has_compare %} is-hidden{% endunless %}" data-compare-price>
                 {% if has_compare %}
-                  {{ current_variant.compare_at_price | times: default_pack_qty | money }}
+                  {{ current_variant.compare_at_price | times: pack_multiplier | money }}
                 {% endif %}
               </span>
             </div>
@@ -221,18 +243,24 @@
             <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
             <input type="hidden" name="quantity" value="{{ default_pack_qty }}" data-quantity-input>
 
+          {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
+            <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
+            <input type="hidden" name="quantity" value="{% if uses_pack_option %}1{% else %}{{ default_pack_qty }}{% endif %}" data-quantity-input>
+
             {% unless featured_product.has_only_default_variant %}
               <div class="opc-fieldset" role="group" aria-label="Choose product options">
                 {% for option in featured_product.options_with_values %}
                   {% assign option_index = forloop.index0 %}
                   {% assign selected_option_value = current_variant.options[option_index] %}
-                  <div class="opc-field">
+                  {% assign option_name_downcase = option.name | downcase %}
+                  <div class="opc-field{% if option_name_downcase contains 'pack' %} opc-field--hidden{% endif %}">
                     <label for="Option-{{ section.id }}-{{ option_index }}">{{ option.name }}</label>
                     <select
                       id="Option-{{ section.id }}-{{ option_index }}"
-                      class="opc-select"
+                      class="opc-select{% if option_name_downcase contains 'pack' %} opc-select--hidden{% endif %}"
                       data-option-index="{{ option_index }}"
                       aria-label="{{ option.name }}"
+                      {% if option_name_downcase contains 'pack' %}data-pack-option{% endif %}
                     >
                       {% for value in option.values %}
                         <option value="{{ value | escape }}"{% if value == selected_option_value %} selected{% endif %}>
@@ -427,65 +455,7 @@
         </div>
       </section>
 
-      <!-- 7) OFFER ARCHITECTURE -->
-      <section class="opc-block" id="opc-offer-{{ section.id }}">
-        <div class="opc-block__head">
-          <h2>{{ section.settings.offer_heading | default: 'Choose your pack' }}</h2>
-          {% if section.settings.offer_subhead != blank %}<p>{{ section.settings.offer_subhead }}</p>{% endif %}
-        </div>
-
-        <div class="opc-offer-grid">
-          <article class="opc-offer-card" data-pack-card="1">
-            <h3>{{ section.settings.pack_1_label | default: '1-Pack' }}</h3>
-            {% if section.settings.pack_1_sub != blank %}<p>{{ section.settings.pack_1_sub }}</p>{% endif %}
-            <div class="opc-offer-pricing">
-              <span class="opc-offer-total" data-pack-total-price="1">{{ current_variant.price | money }}</span>
-              <span class="opc-offer-compare{% unless has_compare %} is-hidden{% endunless %}" data-pack-total-compare="1">
-                {% if has_compare %}{{ current_variant.compare_at_price | money }}{% endif %}
-              </span>
-            </div>
-            {% if section.settings.pack_1_savings != blank %}<div class="opc-offer-meta">{{ section.settings.pack_1_savings }}</div>{% endif %}
-            <button type="button" class="opc-btn opc-btn--ghost" data-pack-pick="1">Select 1-Pack</button>
-          </article>
-
-          <article class="opc-offer-card is-featured" data-pack-card="2">
-            {% if section.settings.pack_2_badge != blank %}<span class="opc-offer-badge">{{ section.settings.pack_2_badge }}</span>{% endif %}
-            <h3>{{ section.settings.pack_2_label | default: '2-Pack' }}</h3>
-            {% if section.settings.pack_2_sub != blank %}<p>{{ section.settings.pack_2_sub }}</p>{% endif %}
-            <div class="opc-offer-pricing">
-              <span class="opc-offer-total" data-pack-total-price="2">{{ current_variant.price | times: 2 | money }}</span>
-              <span class="opc-offer-compare{% unless has_compare %} is-hidden{% endunless %}" data-pack-total-compare="2">
-                {% if has_compare %}{{ current_variant.compare_at_price | times: 2 | money }}{% endif %}
-              </span>
-            </div>
-            {% if section.settings.pack_2_savings != blank %}<div class="opc-offer-meta">{{ section.settings.pack_2_savings }}</div>{% endif %}
-            <button type="button" class="opc-btn opc-btn--ghost" data-pack-pick="2">Select 2-Pack</button>
-          </article>
-
-          <article class="opc-offer-card" data-pack-card="4">
-            <h3>{{ section.settings.pack_4_label | default: '4-Pack' }}</h3>
-            {% if section.settings.pack_4_sub != blank %}<p>{{ section.settings.pack_4_sub }}</p>{% endif %}
-            <div class="opc-offer-pricing">
-              <span class="opc-offer-total" data-pack-total-price="4">{{ current_variant.price | times: 4 | money }}</span>
-              <span class="opc-offer-compare{% unless has_compare %} is-hidden{% endunless %}" data-pack-total-compare="4">
-                {% if has_compare %}{{ current_variant.compare_at_price | times: 4 | money }}{% endif %}
-              </span>
-            </div>
-            {% if section.settings.pack_4_savings != blank %}<div class="opc-offer-meta">{{ section.settings.pack_4_savings }}</div>{% endif %}
-            <button type="button" class="opc-btn opc-btn--ghost" data-pack-pick="4">Select 4-Pack</button>
-          </article>
-        </div>
-
-        {% if section.settings.offer_note != blank %}
-          <p class="opc-offer-note">{{ section.settings.offer_note }}</p>
-        {% endif %}
-
-        <button type="button" class="opc-btn opc-btn--primary opc-offer-submit" data-submit-main>
-          {{ section.settings.atc_text | default: 'Add selected pack to cart' }}
-        </button>
-      </section>
-
-      <!-- 8) WHAT'S INCLUDED -->
+      <!-- 7) WHAT'S INCLUDED -->
       <section class="opc-block">
         <div class="opc-block__head">
           <h2>{{ section.settings.included_heading | default: "What's included" }}</h2>
@@ -501,7 +471,7 @@
         </ul>
       </section>
 
-      <!-- 9) SHIPPING / RETURNS / GUARANTEE -->
+      <!-- 8) SHIPPING / RETURNS / GUARANTEE -->
       <section class="opc-block">
         <div class="opc-block__head">
           <h2>{{ section.settings.shipping_heading | default: 'Shipping, returns, and support' }}</h2>
@@ -527,7 +497,7 @@
         {% endif %}
       </section>
 
-      <!-- 10) FAQ -->
+      <!-- 9) FAQ -->
       <section class="opc-block">
         <div class="opc-block__head">
           <h2>{{ section.settings.faq_heading | default: 'Frequently asked questions' }}</h2>
@@ -561,11 +531,11 @@
       </section>
     </div>
 
-    <!-- 11) STICKY MOBILE CTA -->
+    <!-- 10) STICKY MOBILE CTA -->
     <div class="opc-sticky" data-sticky-bar aria-hidden="true">
       <div class="opc-sticky__inner">
         <div class="opc-sticky__price-wrap">
-          <span class="opc-sticky__price" data-sticky-price>{{ current_variant.price | times: default_pack_qty | money }}</span>
+          <span class="opc-sticky__price" data-sticky-price>{{ current_variant.price | times: pack_multiplier | money }}</span>
           {% if section.settings.sticky_trust_text != blank %}
             <span class="opc-sticky__trust">{{ section.settings.sticky_trust_text }}</span>
           {% endif %}

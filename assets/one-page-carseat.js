@@ -24,6 +24,10 @@
 
       this.mediaItems = Array.from(root.querySelectorAll('[data-media-id]'));
       this.mediaThumbs = Array.from(root.querySelectorAll('[data-media-thumb]'));
+      this.mediaPrev = root.querySelector('[data-media-prev]');
+      this.mediaNext = root.querySelector('[data-media-next]');
+      this.mediaOrder = [];
+      this.activeMediaIndex = 0;
 
       this.packRadios = Array.from(root.querySelectorAll('[data-pack-radio]'));
       this.packPickButtons = Array.from(root.querySelectorAll('[data-pack-pick]'));
@@ -131,6 +135,8 @@
     }
 
     bindMediaEvents() {
+      this.refreshMediaOrder();
+
       this.mediaThumbs.forEach((btn) => {
         btn.addEventListener('click', () => {
           const mediaId = btn.dataset.mediaId;
@@ -138,6 +144,14 @@
           this.setActiveMedia(mediaId);
         });
       });
+
+      if (this.mediaPrev) {
+        this.mediaPrev.addEventListener('click', () => this.stepMedia(-1));
+      }
+
+      if (this.mediaNext) {
+        this.mediaNext.addEventListener('click', () => this.stepMedia(1));
+      }
     }
 
     bindSubmitMirrors() {
@@ -350,7 +364,7 @@
     }
 
     updateAvailability(variant) {
-      const soldOut = !(variant && variant.available);
+      const soldOut = variant && typeof variant.available === 'boolean' ? !variant.available : false;
 
       this.setSoldOutState(soldOut);
     }
@@ -397,9 +411,9 @@
         const isActive = String(item.dataset.mediaId) === String(mediaId);
         item.classList.toggle('is-active', isActive);
         if (isActive) {
-          item.removeAttribute('hidden');
+          item.removeAttribute('aria-hidden');
         } else {
-          item.setAttribute('hidden', 'hidden');
+          item.setAttribute('aria-hidden', 'true');
           const video = item.querySelector('video');
           if (video && !video.paused) video.pause();
         }
