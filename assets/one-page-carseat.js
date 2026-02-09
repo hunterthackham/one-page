@@ -51,23 +51,29 @@
 
     init() {
       this.parseProductData();
-      if (!this.product) return;
-      this.resolvePackOption();
-      this.bindVariantEvents();
-      this.bindPackEvents();
-      this.bindMediaEvents();
-      this.bindSubmitMirrors();
-      this.setPack(this.currentPack, { fromUI: false });
+      this.ensureProductData()
+        .then(() => {
+          if (!this.product) return;
+          this.resolvePackOption();
+          this.bindVariantEvents();
+          this.bindPackEvents();
+          this.bindMediaEvents();
+          this.bindSubmitMirrors();
+          this.setPack(this.currentPack, { fromUI: false });
 
-      const initialVariant =
-        this.resolveVariant() ||
-        this.getVariantById(this.variantIdInput?.value) ||
-        this.firstAvailableVariant() ||
-        (this.product.variants && this.product.variants[0]) ||
-        null;
-      this.updateVariant(initialVariant);
+          const initialVariant =
+            this.resolveVariant() ||
+            this.getVariantById(this.variantIdInput?.value) ||
+            this.firstAvailableVariant() ||
+            (this.product.variants && this.product.variants[0]) ||
+            null;
+          this.updateVariant(initialVariant);
 
-      this.bindStickyBehavior();
+          this.bindStickyBehavior();
+        })
+        .catch((err) => {
+          console.warn('[OnePageCarSeat] Product data unavailable', err);
+        });
     }
 
     parseProductData() {
@@ -80,6 +86,23 @@
         console.warn('[OnePageCarSeat] Product JSON parse failed', err);
         this.product = null;
       }
+    }
+
+    ensureProductData() {
+      if (this.product && Array.isArray(this.product.variants) && this.product.variants.length) {
+        return Promise.resolve();
+      }
+
+      const handle = this.root.dataset.productHandle;
+      if (!handle) return Promise.resolve();
+
+      return fetch(`/products/${handle}.js`, { credentials: 'same-origin' })
+        .then((resp) => (resp.ok ? resp.json() : null))
+        .then((data) => {
+          if (data && Array.isArray(data.variants) && data.variants.length) {
+            this.product = data;
+          }
+        });
     }
 
     resolvePackOption() {
