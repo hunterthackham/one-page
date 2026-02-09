@@ -53,8 +53,16 @@
       endif
 
       assign uses_pack_option = false
-      for option_name in featured_product.options
-        if option_name != blank and option_name | downcase contains 'pack'
+      for option in featured_product.options_with_values
+        assign option_is_pack = false
+        for value in option.values
+          assign value_downcase = value | downcase
+          if value_downcase contains 'pack' or value == '1' or value == '2' or value == '4'
+            assign option_is_pack = true
+            break
+          endif
+        endfor
+        if option_is_pack
           assign uses_pack_option = true
           break
         endif
@@ -241,10 +249,6 @@
 
           {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
             <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
-            <input type="hidden" name="quantity" value="{{ default_pack_qty }}" data-quantity-input>
-
-          {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
-            <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
             <input type="hidden" name="quantity" value="{% if uses_pack_option %}1{% else %}{{ default_pack_qty }}{% endif %}" data-quantity-input>
 
             {% unless featured_product.has_only_default_variant %}
@@ -253,14 +257,22 @@
                   {% assign option_index = forloop.index0 %}
                   {% assign selected_option_value = current_variant.options[option_index] %}
                   {% assign option_name_downcase = option.name | downcase %}
-                  <div class="opc-field{% if option_name_downcase contains 'pack' %} opc-field--hidden{% endif %}">
+                  {% assign option_is_pack = false %}
+                  {% for value in option.values %}
+                    {% assign value_downcase = value | downcase %}
+                    {% if value_downcase contains 'pack' or value == '1' or value == '2' or value == '4' %}
+                      {% assign option_is_pack = true %}
+                      {% break %}
+                    {% endif %}
+                  {% endfor %}
+                  <div class="opc-field{% if option_is_pack %} opc-field--hidden{% endif %}">
                     <label for="Option-{{ section.id }}-{{ option_index }}">{{ option.name }}</label>
                     <select
                       id="Option-{{ section.id }}-{{ option_index }}"
-                      class="opc-select{% if option_name_downcase contains 'pack' %} opc-select--hidden{% endif %}"
+                      class="opc-select{% if option_is_pack %} opc-select--hidden{% endif %}"
                       data-option-index="{{ option_index }}"
                       aria-label="{{ option.name }}"
-                      {% if option_name_downcase contains 'pack' %}data-pack-option{% endif %}
+                      {% if option_is_pack %}data-pack-option{% endif %}
                     >
                       {% for value in option.values %}
                         <option value="{{ value | escape }}"{% if value == selected_option_value %} selected{% endif %}>
