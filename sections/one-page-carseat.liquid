@@ -53,6 +53,8 @@
       endif
 
       assign uses_pack_option = false
+      assign pack_option_position = 0
+      assign current_pack_option_value = ''
       for option in featured_product.options_with_values
         assign option_is_pack = false
         for value in option.values
@@ -64,6 +66,8 @@
         endfor
         if option_is_pack
           assign uses_pack_option = true
+          assign pack_option_position = forloop.index0
+          assign current_pack_option_value = current_variant.options[pack_option_position] | default: ''
           break
         endif
       endfor
@@ -291,49 +295,77 @@
               <legend>{{ section.settings.offer_heading | default: 'Choose your pack' }}</legend>
 
               <div class="opc-pack-grid">
-                <label class="opc-pack-card{% if default_pack == '1' %} is-active{% endif %}" data-pack-card="1">
-                  <input
-                    type="radio"
-                    name="pack_{{ section.id }}"
-                    value="1"
-                    data-pack-radio
-                    {% if default_pack == '1' %}checked{% endif %}
-                  >
-                  <span class="opc-pack-card__title">{{ section.settings.pack_1_label | default: '1-Pack' }}</span>
-                  {% if section.settings.pack_1_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_1_sub }}</span>{% endif %}
-                  {% if section.settings.pack_1_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_1_savings }}</span>{% endif %}
-                </label>
-
-                <label class="opc-pack-card{% if default_pack == '2' %} is-active{% endif %}" data-pack-card="2">
-                  <input
-                    type="radio"
-                    name="pack_{{ section.id }}"
-                    value="2"
-                    data-pack-radio
-                    {% if default_pack == '2' %}checked{% endif %}
-                  >
-                  <span class="opc-pack-card__title">
-                    {{ section.settings.pack_2_label | default: '2-Pack' }}
-                    {% if section.settings.pack_2_badge != blank %}
-                      <span class="opc-inline-badge">{{ section.settings.pack_2_badge }}</span>
+                {% if uses_pack_option %}
+                  {% for option in featured_product.options_with_values %}
+                    {% assign option_is_pack_loop = false %}
+                    {% for value in option.values %}
+                      {% assign value_downcase = value | downcase %}
+                      {% if value_downcase contains 'pack' or value == '1' or value == '2' or value == '4' %}
+                        {% assign option_is_pack_loop = true %}
+                        {% break %}
+                      {% endif %}
+                    {% endfor %}
+                    {% if option_is_pack_loop %}
+                      {% for value in option.values %}
+                        <label class="opc-pack-card{% if value == current_pack_option_value %} is-active{% endif %}" data-pack-card="{{ value | escape }}">
+                          <input
+                            type="radio"
+                            name="pack_{{ section.id }}"
+                            value="{{ value | escape }}"
+                            data-pack-radio
+                            {% if value == current_pack_option_value %}checked{% endif %}
+                          >
+                          <span class="opc-pack-card__title">{{ value }}</span>
+                        </label>
+                      {% endfor %}
+                      {% break %}
                     {% endif %}
-                  </span>
-                  {% if section.settings.pack_2_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_2_sub }}</span>{% endif %}
-                  {% if section.settings.pack_2_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_2_savings }}</span>{% endif %}
-                </label>
+                  {% endfor %}
+                {% else %}
+                  <label class="opc-pack-card{% if default_pack == '1' %} is-active{% endif %}" data-pack-card="1">
+                    <input
+                      type="radio"
+                      name="pack_{{ section.id }}"
+                      value="1"
+                      data-pack-radio
+                      {% if default_pack == '1' %}checked{% endif %}
+                    >
+                    <span class="opc-pack-card__title">{{ section.settings.pack_1_label | default: '1-Pack' }}</span>
+                    {% if section.settings.pack_1_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_1_sub }}</span>{% endif %}
+                    {% if section.settings.pack_1_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_1_savings }}</span>{% endif %}
+                  </label>
 
-                <label class="opc-pack-card{% if default_pack == '4' %} is-active{% endif %}" data-pack-card="4">
-                  <input
-                    type="radio"
-                    name="pack_{{ section.id }}"
-                    value="4"
-                    data-pack-radio
-                    {% if default_pack == '4' %}checked{% endif %}
-                  >
-                  <span class="opc-pack-card__title">{{ section.settings.pack_4_label | default: '4-Pack' }}</span>
-                  {% if section.settings.pack_4_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_4_sub }}</span>{% endif %}
-                  {% if section.settings.pack_4_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_4_savings }}</span>{% endif %}
-                </label>
+                  <label class="opc-pack-card{% if default_pack == '2' %} is-active{% endif %}" data-pack-card="2">
+                    <input
+                      type="radio"
+                      name="pack_{{ section.id }}"
+                      value="2"
+                      data-pack-radio
+                      {% if default_pack == '2' %}checked{% endif %}
+                    >
+                    <span class="opc-pack-card__title">
+                      {{ section.settings.pack_2_label | default: '2-Pack' }}
+                      {% if section.settings.pack_2_badge != blank %}
+                        <span class="opc-inline-badge">{{ section.settings.pack_2_badge }}</span>
+                      {% endif %}
+                    </span>
+                    {% if section.settings.pack_2_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_2_sub }}</span>{% endif %}
+                    {% if section.settings.pack_2_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_2_savings }}</span>{% endif %}
+                  </label>
+
+                  <label class="opc-pack-card{% if default_pack == '4' %} is-active{% endif %}" data-pack-card="4">
+                    <input
+                      type="radio"
+                      name="pack_{{ section.id }}"
+                      value="4"
+                      data-pack-radio
+                      {% if default_pack == '4' %}checked{% endif %}
+                    >
+                    <span class="opc-pack-card__title">{{ section.settings.pack_4_label | default: '4-Pack' }}</span>
+                    {% if section.settings.pack_4_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_4_sub }}</span>{% endif %}
+                    {% if section.settings.pack_4_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_4_savings }}</span>{% endif %}
+                  </label>
+                {% endif %}
               </div>
             </fieldset>
 
@@ -556,9 +588,25 @@
         <div class="opc-sticky__controls">
           <label class="opc-sr-only" for="opc-sticky-pack-{{ section.id }}">Pack quantity</label>
           <select id="opc-sticky-pack-{{ section.id }}" class="opc-sticky__pack" data-sticky-pack>
-            <option value="1" {% if default_pack == '1' %}selected{% endif %}>{{ section.settings.pack_1_label | default: '1-Pack' }}</option>
-            <option value="2" {% if default_pack == '2' %}selected{% endif %}>{{ section.settings.pack_2_label | default: '2-Pack' }}</option>
-            <option value="4" {% if default_pack == '4' %}selected{% endif %}>{{ section.settings.pack_4_label | default: '4-Pack' }}</option>
+            {% if uses_pack_option %}
+              {% for option in featured_product.options_with_values %}
+                {% assign opt_is_pack = false %}
+                {% for val in option.values %}
+                  {% assign vd = val | downcase %}
+                  {% if vd contains 'pack' or val == '1' or val == '2' or val == '4' %}{% assign opt_is_pack = true %}{% break %}{% endif %}
+                {% endfor %}
+                {% if opt_is_pack %}
+                  {% for value in option.values %}
+                    <option value="{{ value | escape }}" {% if value == current_pack_option_value %}selected{% endif %}>{{ value }}</option>
+                  {% endfor %}
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              <option value="1" {% if default_pack == '1' %}selected{% endif %}>{{ section.settings.pack_1_label | default: '1-Pack' }}</option>
+              <option value="2" {% if default_pack == '2' %}selected{% endif %}>{{ section.settings.pack_2_label | default: '2-Pack' }}</option>
+              <option value="4" {% if default_pack == '4' %}selected{% endif %}>{{ section.settings.pack_4_label | default: '4-Pack' }}</option>
+            {% endif %}
           </select>
 
           <button
