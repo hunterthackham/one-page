@@ -1,10 +1,5 @@
 (() => {
   const ROOT_SELECTOR = '[data-opc-root]';
-  const DEBUG = false;
-
-  const dbg = (...args) => {
-    if (DEBUG) console.log('[OPC DEBUG]', ...args);
-  };
 
   class OnePageCarSeat {
     constructor(root) {
@@ -14,28 +9,29 @@
 
       this.product = null;
       this.currentVariant = null;
-
-      this.packOptionIndex = Number.isFinite(parseInt(root.dataset.packOptionIndex, 10))
-        ? parseInt(root.dataset.packOptionIndex, 10)
-        : -1;
-      this.hasPackOption = root.dataset.hasPackOption === 'true' && this.packOptionIndex >= 0;
-      this.currentPackValue = null;
+      this.currentPack = this.toInt(root.dataset.defaultPack, 2);
+      this.packOptionIndex = null;
+      this.packOptionValues = {};
+      this.usesPackOption = false;
 
       this.optionSelects = Array.from(root.querySelectorAll('[data-option-index]'));
-
       this.variantIdInput = root.querySelector('[data-variant-id-input]');
+      this.qtyInput = root.querySelector('[data-quantity-input]');
       this.priceEl = root.querySelector('[data-price]');
       this.compareEl = root.querySelector('[data-compare-price]');
       this.atcBtn = root.querySelector('[data-atc-btn]');
+      this.heroEl = root.querySelector('[data-hero]');
 
-      this.heroPackCards = Array.from(root.querySelectorAll('[data-pack-card]'));
+      this.mediaItems = Array.from(root.querySelectorAll('[data-media-id]'));
+      this.mediaThumbs = Array.from(root.querySelectorAll('[data-media-thumb]'));
+      this.mediaPrev = root.querySelector('[data-media-prev]');
+      this.mediaNext = root.querySelector('[data-media-next]');
+      this.mediaOrder = [];
+      this.activeMediaIndex = 0;
+
       this.packRadios = Array.from(root.querySelectorAll('[data-pack-radio]'));
       this.packPickButtons = Array.from(root.querySelectorAll('[data-pack-pick]'));
-
-      this.offerCards = Array.from(root.querySelectorAll('[data-offer-card]'));
-
-      this.mediaItems = Array.from(root.querySelectorAll('.opc-media-stage [data-media-id]'));
-      this.mediaThumbs = Array.from(root.querySelectorAll('[data-media-thumb]'));
+      this.packCards = Array.from(root.querySelectorAll('[data-pack-card]'));
 
       this.submitMainBtns = Array.from(root.querySelectorAll('[data-submit-main]'));
 
@@ -44,7 +40,6 @@
       this.stickyPack = root.querySelector('[data-sticky-pack]');
       this.stickySubmit = root.querySelector('[data-sticky-submit]');
 
-      this.heroEl = root.querySelector('[data-hero]');
       this.footerEl = document.querySelector('footer');
 
       this.heroInView = true;
@@ -56,17 +51,17 @@
 
     init() {
       this.parseProductData();
-
+      this.resolvePackOption();
       this.bindVariantEvents();
       this.bindPackEvents();
       this.bindMediaEvents();
       this.bindSubmitMirrors();
-      this.bindFormSubmitSafety();
-      this.bindStickyVisibility();
+      this.setPack(this.currentPack, { fromUI: false });
 
-      // Initialize from hidden variant id / selected options.
-      this.currentVariant = this.resolveVariantSafe();
-      this.refreshState();
+      const initialVariant = this.resolveVariant() || this.getVariantById(this.variantIdInput?.value);
+      this.updateVariant(initialVariant);
+
+      this.bindStickyBehavior();
     }
 
     parseProductData() {
@@ -74,366 +69,44 @@
       if (!jsonEl) return;
 
       try {
-        this.product = JSON.parse(jsonEl.textContent || '{}');
+        this.product = JSON.parse(jsonEl.textContent);
       } catch (err) {
-        console.warn('[OnePageCarSeat] Failed to parse product JSON', err);
+        console.warn('[OnePageCarSeat] Product JSON parse failed', err);
         this.product = null;
       }
     }
 
-    firstAvailableVariant() {
-      if (!this.product || !Array.isArray(this.product.variants)) return null;
-      return this.product.variants.find((v) => !!v.available) || null;
-    }
+    resolvePackOption() {
+      if (!this.product || !Array.isArray(this.product.options)) return;
 
-    findVariantByOptions(optionsArray, requireAvailable = false) {
-      if (!this.product || !Array.isArray(this.product.variants) || !Array.isArray(optionsArray)) return null;
-
-      return (
-        this.product.variants.find((v) => {
-          if (!Array.isArray(v.options)) return false;
-          const same = v.options.length === optionsArray.length && v.options.every((opt, idx) => opt === optionsArray[idx]);
-          if (!same) return false;
-          if (requireAvailable && !v.available) return false;
-          return true;
-        }) || null
+      const packIndex = this.product.options.findIndex((option) =>
+        String(option).toLowerCase().includes('pack')
       );
-    }
 
-    findClosestAvailableVariant(selectedOptions) {
-      if (!this.product || !Array.isArray(this.product.variants)) return null;
-      const available = this.product.variants.filter((v) => !!v.available);
-      if (!available.length) return null;
+      if (packIndex === -1) return;
 
-      // Prefer same non-pack options first (if pack option exists)
-      if (this.hasPackOption) {
-        const sameNonPack = available.find((v) =>
-          v.options.every((opt, idx) => idx === this.packOptionIndex || opt === selectedOptions[idx])
-        );
-        if (sameNonPack) return sameNonPack;
-      }
+      this.packOptionIndex = packIndex;
+      this.packOptionValues = {};
 
-      // Then any available variant sharing at least one selected option
-      const partial = available.find((v) => v.options.some((opt, idx) => opt === selectedOptions[idx]));
-      if (partial) return partial;
-
-      return available[0];
-    }
-
-    getPackValueFromUI() {
-      const checked = this.packRadios.find((r) => r.checked);
-      if (checked && checked.value) return checked.value;
-
-      if (this.stickyPack && this.stickyPack.value) return this.stickyPack.value;
-
-      return this.currentPackValue;
-    }
-
-    applyPackUIValue(value) {
-      if (!this.hasPackOption || !value) return;
-      this.currentPackValue = value;
-
-      this.packRadios.forEach((radio) => {
-        radio.checked = radio.value === value;
-      });
-
-      this.heroPackCards.forEach((card) => {
-        card.classList.toggle('is-active', card.dataset.packValue === value);
-      });
-
-      this.offerCards.forEach((card) => {
-        card.classList.toggle('is-active', card.dataset.packValue === value);
-      });
-
-      if (this.stickyPack && this.stickyPack.value !== value) {
-        this.stickyPack.value = value;
-      }
-    }
-
-    collectSelectedOptions() {
-      if (!this.product || !Array.isArray(this.product.options)) return [];
-
-      const optionCount = this.product.options.length;
-      const selected = new Array(optionCount);
-
-      // Fill from explicit option selects rendered in DOM
-      this.optionSelects.forEach((select) => {
-        const idx = parseInt(select.dataset.optionIndex, 10);
-        if (Number.isFinite(idx) && idx >= 0 && idx < optionCount) {
-          selected[idx] = select.value;
+      this.product.variants.forEach((variant) => {
+        if (!Array.isArray(variant.options)) return;
+        const value = variant.options[packIndex];
+        const packSize = this.parsePackSize(value);
+        if (packSize && !this.packOptionValues[packSize]) {
+          this.packOptionValues[packSize] = value;
         }
       });
 
-      // Fill pack option from pack UI controls
-      if (this.hasPackOption && this.packOptionIndex < optionCount) {
-        const packValue = this.getPackValueFromUI();
-        if (packValue) selected[this.packOptionIndex] = packValue;
-      }
-
-      // Fill gaps from current variant
-      const current = this.currentVariant && Array.isArray(this.currentVariant.options) ? this.currentVariant.options : null;
-      if (current) {
-        for (let i = 0; i < optionCount; i += 1) {
-          if (typeof selected[i] === 'undefined') selected[i] = current[i];
-        }
-      }
-
-      // Final fallback from first variant
-      const first = this.product.variants && this.product.variants[0] ? this.product.variants[0].options : null;
-      if (first) {
-        for (let i = 0; i < optionCount; i += 1) {
-          if (typeof selected[i] === 'undefined') selected[i] = first[i];
-        }
-      }
-
-      return selected;
-    }
-
-    syncUIToVariant(variant) {
-      if (!variant || !Array.isArray(variant.options)) return;
-
-      // Sync all rendered option selects (non-pack selects in this section)
-      this.optionSelects.forEach((select) => {
-        const idx = parseInt(select.dataset.optionIndex, 10);
-        if (!Number.isFinite(idx)) return;
-        const desired = variant.options[idx];
-        if (typeof desired !== 'undefined' && select.value !== desired) {
-          select.value = desired;
-        }
-      });
-
-      // Sync pack UI from variant option value
-      if (this.hasPackOption) {
-        const packValue = variant.options[this.packOptionIndex];
-        if (packValue) this.applyPackUIValue(packValue);
-      }
-    }
-
-    resolveVariantSafe() {
-      if (!this.product || !Array.isArray(this.product.variants) || !this.product.variants.length) {
-        return null;
-      }
-
-      const selected = this.collectSelectedOptions();
-      dbg('selected options', selected);
-
-      // 1) exact match first (available or unavailable)
-      let variant = this.findVariantByOptions(selected, false);
-
-      // 2) fallback to closest available
-      if (!variant) {
-        variant = this.findClosestAvailableVariant(selected);
-      }
-
-      // 3) global fallback
-      if (!variant) {
-        variant = this.firstAvailableVariant() || this.product.variants[0] || null;
-      }
-
-      if (variant) {
-        this.syncUIToVariant(variant);
-        dbg('resolved variant id', variant.id, variant.options);
-      }
-
-      return variant;
-    }
-
-    choosePackValue(packValue, opts = {}) {
-      if (!this.hasPackOption || !packValue) return;
-
-      this.applyPackUIValue(packValue);
-      this.currentVariant = this.resolveVariantSafe();
-      this.refreshState();
-
-      if (opts.focusForm) {
-        this.form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-
-    updatePriceUI(variant) {
-      const priceCents = parseInt(variant?.price || 0, 10) || 0;
-      const compareCents = parseInt(variant?.compare_at_price || 0, 10) || 0;
-      const showCompare = compareCents > priceCents && compareCents > 0;
-
-      if (this.priceEl) this.priceEl.textContent = this.formatMoney(priceCents);
-
-      if (this.compareEl) {
-        if (showCompare) {
-          this.compareEl.textContent = this.formatMoney(compareCents);
-          this.compareEl.classList.remove('is-hidden');
-        } else {
-          this.compareEl.textContent = '';
-          this.compareEl.classList.add('is-hidden');
-        }
-      }
-
-      if (this.stickyPrice) {
-        this.stickyPrice.textContent = this.formatMoney(priceCents);
-      }
-
-      dbg('rendered price', { priceCents, compareCents, showCompare });
-    }
-
-    updateAvailabilityUI(isAvailable) {
-      const available = !!isAvailable;
-
-      const atcDefault = this.atcBtn?.dataset.defaultText || 'Add to cart';
-      const atcSold = this.atcBtn?.dataset.soldoutText || 'Sold out';
-
-      if (this.atcBtn) {
-        this.atcBtn.disabled = !available;
-        this.atcBtn.textContent = available ? atcDefault : atcSold;
-      }
-
-      if (this.stickySubmit) {
-        const stickyDefault = this.stickySubmit.dataset.defaultText || 'Add to cart';
-        const stickySold = this.stickySubmit.dataset.soldoutText || 'Sold out';
-        this.stickySubmit.disabled = !available;
-        this.stickySubmit.textContent = available ? stickyDefault : stickySold;
-      }
-    }
-
-    findVariantForPackValue(packValue) {
-      if (!this.product || !Array.isArray(this.product.variants)) return null;
-      if (!this.hasPackOption) return this.currentVariant;
-
-      const selected = this.collectSelectedOptions();
-      selected[this.packOptionIndex] = packValue;
-      return this.findVariantByOptions(selected, false);
-    }
-
-    updateOfferCards() {
-      if (!this.offerCards.length) return;
-
-      this.offerCards.forEach((card) => {
-        const packValue = card.dataset.packValue;
-        const variant = this.findVariantForPackValue(packValue);
-
-        const priceEl = card.querySelector('[data-offer-price]');
-        const compareEl = card.querySelector('[data-offer-compare]');
-        const button = card.querySelector('[data-pack-pick]');
-
-        if (variant) {
-          const priceCents = parseInt(variant.price || 0, 10) || 0;
-          const compareCents = parseInt(variant.compare_at_price || 0, 10) || 0;
-          const showCompare = compareCents > priceCents && compareCents > 0;
-
-          if (priceEl) priceEl.textContent = this.formatMoney(priceCents);
-
-          if (compareEl) {
-            if (showCompare) {
-              compareEl.textContent = this.formatMoney(compareCents);
-              compareEl.classList.remove('is-hidden');
-            } else {
-              compareEl.textContent = '';
-              compareEl.classList.add('is-hidden');
-            }
-          }
-
-          const unavailable = !variant.available;
-          card.classList.toggle('is-unavailable', unavailable);
-
-          if (button) {
-            const defaultLabel = button.dataset.defaultLabel || `Select ${packValue}`;
-            button.disabled = unavailable;
-            button.textContent = unavailable ? 'Unavailable' : defaultLabel;
-          }
-        } else {
-          card.classList.add('is-unavailable');
-          if (priceEl) priceEl.textContent = '—';
-          if (compareEl) {
-            compareEl.textContent = '';
-            compareEl.classList.add('is-hidden');
-          }
-          if (button) {
-            button.disabled = true;
-            button.textContent = 'Unavailable';
-          }
-        }
-
-        card.classList.toggle('is-active', packValue === this.currentPackValue);
-      });
-    }
-
-    updatePackCardsAvailability() {
-      if (!this.heroPackCards.length) return;
-
-      this.heroPackCards.forEach((card) => {
-        const packValue = card.dataset.packValue;
-        const variant = this.findVariantForPackValue(packValue);
-        const unavailable = !variant || !variant.available;
-
-        card.classList.toggle('is-unavailable', unavailable);
-
-        const radio = card.querySelector('[data-pack-radio]');
-        if (radio) {
-          radio.disabled = unavailable;
-        }
-      });
-    }
-
-    syncMediaToVariant(variant) {
-      if (!variant) return;
-
-      const featuredMediaId = variant.featured_media?.id || variant.featured_image?.id || null;
-      if (featuredMediaId) {
-        this.setActiveMedia(String(featuredMediaId));
-      }
-    }
-
-    setActiveMedia(mediaId) {
-      if (!mediaId) return;
-
-      this.mediaItems.forEach((item) => {
-        const active = String(item.dataset.mediaId) === String(mediaId);
-        item.classList.toggle('is-active', active);
-
-        if (active) {
-          item.removeAttribute('hidden');
-        } else {
-          item.setAttribute('hidden', 'hidden');
-          const video = item.querySelector('video');
-          if (video && !video.paused) video.pause();
-        }
-      });
-
-      this.mediaThumbs.forEach((thumb) => {
-        const active = String(thumb.dataset.mediaId) === String(mediaId);
-        thumb.classList.toggle('is-active', active);
-      });
-    }
-
-    refreshState() {
-      const variant = this.currentVariant || this.resolveVariantSafe();
-      if (!variant) {
-        this.updateAvailabilityUI(false);
-        return;
-      }
-
-      this.currentVariant = variant;
-
-      if (this.variantIdInput) {
-        this.variantIdInput.value = String(variant.id);
-      }
-
-      // Ensure pack UI remains synchronized to resolved variant
-      if (this.hasPackOption && Array.isArray(variant.options)) {
-        const packValue = variant.options[this.packOptionIndex];
-        if (packValue) this.applyPackUIValue(packValue);
-      }
-
-      this.updatePriceUI(variant);
-      this.updateAvailabilityUI(variant.available);
-      this.syncMediaToVariant(variant);
-      this.updateOfferCards();
-      this.updatePackCardsAvailability();
+      this.usesPackOption = Object.keys(this.packOptionValues).length > 0;
     }
 
     bindVariantEvents() {
+      if (!this.optionSelects.length) return;
+
       this.optionSelects.forEach((select) => {
         select.addEventListener('change', () => {
-          this.currentVariant = this.resolveVariantSafe();
-          this.refreshState();
+          const variant = this.resolveVariant();
+          this.updateVariant(variant);
         });
       });
     }
@@ -441,39 +114,44 @@
     bindPackEvents() {
       this.packRadios.forEach((radio) => {
         radio.addEventListener('change', () => {
-          if (radio.checked) this.choosePackValue(radio.value);
+          if (radio.checked) {
+            this.setPack(this.toInt(radio.value, 1), { fromUI: true });
+          }
         });
       });
 
       this.packPickButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
-          const packValue = btn.dataset.packPick;
-          this.choosePackValue(packValue, { focusForm: true });
+          const qty = this.toInt(btn.dataset.packPick, this.currentPack || 1);
+          this.setPack(qty, { fromUI: true, focusForm: true });
         });
-      });
-
-      // Card click safety (label/article click edges)
-      this.root.addEventListener('click', (e) => {
-        const card = e.target.closest('[data-pack-card]');
-        if (!card || !this.root.contains(card)) return;
-        const value = card.dataset.packValue;
-        if (value) this.choosePackValue(value);
       });
 
       if (this.stickyPack) {
         this.stickyPack.addEventListener('change', () => {
-          this.choosePackValue(this.stickyPack.value);
+          this.setPack(this.toInt(this.stickyPack.value, this.currentPack || 1), { fromUI: true });
         });
       }
     }
 
     bindMediaEvents() {
+      this.refreshMediaOrder();
+
       this.mediaThumbs.forEach((btn) => {
         btn.addEventListener('click', () => {
           const mediaId = btn.dataset.mediaId;
-          if (mediaId) this.setActiveMedia(mediaId);
+          if (!mediaId) return;
+          this.setActiveMedia(mediaId);
         });
       });
+
+      if (this.mediaPrev) {
+        this.mediaPrev.addEventListener('click', () => this.stepMedia(-1));
+      }
+
+      if (this.mediaNext) {
+        this.mediaNext.addEventListener('click', () => this.stepMedia(1));
+      }
     }
 
     bindSubmitMirrors() {
@@ -486,40 +164,12 @@
       }
     }
 
-    bindFormSubmitSafety() {
-      this.form.addEventListener('submit', (e) => {
-        const safeVariant = this.resolveVariantSafe();
-
-        if (!safeVariant || !safeVariant.available) {
-          e.preventDefault();
-          this.updateAvailabilityUI(false);
-          return;
-        }
-
-        if (this.variantIdInput) {
-          this.variantIdInput.value = String(safeVariant.id);
-        }
-
-        dbg('ATC payload id', this.variantIdInput?.value);
-      });
-    }
-
-    submitMainForm() {
-      if (!this.form) return;
-      if (typeof this.form.requestSubmit === 'function') {
-        this.form.requestSubmit();
-      } else {
-        this.form.submit();
-      }
-    }
-
-    bindStickyVisibility() {
-      if (!this.stickyBar || !this.heroEl || !this.form) return;
+    bindStickyBehavior() {
+      if (!this.stickyBar || !this.heroEl) return;
 
       const update = () => {
         const mobile = window.matchMedia('(max-width: 989px)').matches;
         const show = mobile && !this.heroInView && !this.formInView && !this.footerInView;
-
         this.stickyBar.classList.toggle('is-visible', show);
         this.stickyBar.setAttribute('aria-hidden', show ? 'false' : 'true');
       };
@@ -555,10 +205,10 @@
         }
       } else {
         const onScroll = () => {
-          this.heroInView = this.heroEl.getBoundingClientRect().bottom > 20;
-          this.formInView =
-            this.form.getBoundingClientRect().top < window.innerHeight * 0.75 &&
-            this.form.getBoundingClientRect().bottom > 80;
+          const heroBottom = this.heroEl.getBoundingClientRect().bottom;
+          this.heroInView = heroBottom > 20;
+          this.formInView = this.form.getBoundingClientRect().top < window.innerHeight * 0.75 &&
+                            this.form.getBoundingClientRect().bottom > 80;
           this.footerInView = this.footerEl
             ? this.footerEl.getBoundingClientRect().top < window.innerHeight
             : false;
@@ -572,19 +222,286 @@
       update();
     }
 
+    submitMainForm() {
+      if (!this.form) return;
+      if (typeof this.form.requestSubmit === 'function') {
+        this.form.requestSubmit();
+      } else {
+        this.form.submit();
+      }
+    }
+
+    setPack(qty, opts = {}) {
+      const normalized = [1, 2, 4].includes(qty) ? qty : 1;
+      this.currentPack = normalized;
+
+      if (this.usesPackOption) {
+        if (this.qtyInput) this.qtyInput.value = '1';
+        const packValue = this.packOptionValues[normalized];
+        if (packValue && this.optionSelects[this.packOptionIndex]) {
+          this.optionSelects[this.packOptionIndex].value = packValue;
+        }
+      } else {
+        if (this.qtyInput) this.qtyInput.value = String(normalized);
+      }
+
+      this.syncPackUi();
+
+      if (this.usesPackOption) {
+        const variant = this.resolveVariant();
+        this.updateVariant(variant);
+      } else if (this.currentVariant) {
+        this.updatePriceCluster(this.currentVariant);
+        this.updateOfferTotals(this.currentVariant);
+      }
+
+      if (opts.focusForm) {
+        this.form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    resolveVariant() {
+      if (!this.product || !Array.isArray(this.product.variants) || this.product.variants.length === 0) {
+        return null;
+      }
+
+      // Single variant flow
+      if (!this.optionSelects.length) {
+        const fromHidden = this.getVariantById(this.variantIdInput?.value);
+        return fromHidden || this.firstAvailableVariant() || this.product.variants[0];
+      }
+
+      const selectedOptions = this.optionSelects.map((s) => s.value);
+      let variant = this.product.variants.find((v) => {
+        if (!Array.isArray(v.options)) return false;
+        return v.options.every((opt, idx) => opt === selectedOptions[idx]);
+      });
+
+      if (!variant) {
+        variant = this.firstAvailableVariant() || this.product.variants[0];
+        if (variant && Array.isArray(variant.options)) {
+          this.syncOptionSelectors(variant.options);
+        }
+      }
+
+      return variant;
+    }
+
+    updateVariant(variant) {
+      if (!variant) {
+        this.setSoldOutState(true);
+        return;
+      }
+
+      this.currentVariant = variant;
+      this.syncPackToVariant(variant);
+
+      if (this.variantIdInput) {
+        this.variantIdInput.value = String(variant.id);
+      }
+
+      this.updatePriceCluster(variant);
+      this.updateOfferTotals(variant);
+      this.updateAvailability(variant);
+      this.syncMediaToVariant(variant);
+    }
+
+    updatePriceCluster(variant) {
+      const qty = this.currentPack || 1;
+      const multiplier = this.usesPackOption ? 1 : qty;
+      const priceCents = this.toInt(variant.price, 0) * multiplier;
+      const compareCents = this.toInt(variant.compare_at_price, 0) * multiplier;
+      const showCompare = compareCents > priceCents && compareCents > 0;
+
+      if (this.priceEl) {
+        this.priceEl.textContent = this.formatMoney(priceCents);
+      }
+
+      if (this.compareEl) {
+        if (showCompare) {
+          this.compareEl.textContent = this.formatMoney(compareCents);
+          this.compareEl.classList.remove('is-hidden');
+        } else {
+          this.compareEl.textContent = '';
+          this.compareEl.classList.add('is-hidden');
+        }
+      }
+
+      if (this.stickyPrice) {
+        this.stickyPrice.textContent = this.formatMoney(priceCents);
+      }
+    }
+
+    updateOfferTotals(variant) {
+      const priceNodes = this.root.querySelectorAll('[data-pack-total-price]');
+      const compareNodes = this.root.querySelectorAll('[data-pack-total-compare]');
+
+      priceNodes.forEach((node) => {
+        const qty = this.toInt(node.dataset.packTotalPrice, 1);
+        if (this.usesPackOption) {
+          const packVariant = this.getVariantForPack(qty) || variant;
+          node.textContent = this.formatMoney(this.toInt(packVariant.price, 0));
+        } else {
+          const cents = this.toInt(variant.price, 0) * qty;
+          node.textContent = this.formatMoney(cents);
+        }
+      });
+
+      compareNodes.forEach((node) => {
+        const qty = this.toInt(node.dataset.packTotalCompare, 1);
+        const packVariant = this.usesPackOption ? this.getVariantForPack(qty) || variant : variant;
+        const multiplier = this.usesPackOption ? 1 : qty;
+        const basePrice = this.toInt(packVariant.price, 0) * multiplier;
+        const compare = this.toInt(packVariant.compare_at_price, 0) * multiplier;
+        if (compare > basePrice && compare > 0) {
+          node.textContent = this.formatMoney(compare);
+          node.classList.remove('is-hidden');
+        } else {
+          node.textContent = '';
+          node.classList.add('is-hidden');
+        }
+      });
+    }
+
+    updateAvailability(variant) {
+      const soldOut = variant && typeof variant.available === 'boolean' ? !variant.available : false;
+
+      this.setSoldOutState(soldOut);
+    }
+
+    setSoldOutState(soldOut) {
+      const defaultAtc = this.atcBtn?.dataset.defaultText || 'Add to cart';
+      const soldOutText = this.atcBtn?.dataset.soldoutText || 'Sold out';
+
+      if (this.atcBtn) {
+        this.atcBtn.disabled = soldOut;
+        this.atcBtn.textContent = soldOut ? soldOutText : defaultAtc;
+      }
+
+      if (this.stickySubmit) {
+        const stickyDefault = this.stickySubmit.dataset.defaultText || 'Add to cart';
+        const stickySold = this.stickySubmit.dataset.soldoutText || 'Sold out';
+        this.stickySubmit.disabled = soldOut;
+        this.stickySubmit.textContent = soldOut ? stickySold : stickyDefault;
+      }
+    }
+
+    syncMediaToVariant(variant) {
+      if (!variant) return;
+      const featuredMediaId =
+        variant.featured_media?.id ||
+        variant.featured_image?.id ||
+        null;
+
+      if (featuredMediaId) {
+        this.setActiveMedia(String(featuredMediaId));
+        return;
+      }
+
+      const featuredSrc = variant.featured_image?.src || variant.featured_image?.url;
+      if (featuredSrc) {
+        this.setActiveMediaBySrc(featuredSrc);
+      }
+    }
+
+    setActiveMedia(mediaId) {
+      if (!mediaId) return;
+
+      this.mediaItems.forEach((item) => {
+        const isActive = String(item.dataset.mediaId) === String(mediaId);
+        item.classList.toggle('is-active', isActive);
+        if (isActive) {
+          item.removeAttribute('aria-hidden');
+        } else {
+          item.setAttribute('aria-hidden', 'true');
+          const video = item.querySelector('video');
+          if (video && !video.paused) video.pause();
+        }
+      });
+
+      this.mediaThumbs.forEach((btn) => {
+        const isActive = String(btn.dataset.mediaId) === String(mediaId);
+        btn.classList.toggle('is-active', isActive);
+      });
+    }
+
+    setActiveMediaBySrc(src) {
+      const normalized = this.normalizeImageUrl(src);
+      if (!normalized) return;
+
+      const target = this.mediaItems.find((item) => {
+        const candidate = item.dataset.mediaSrc;
+        return candidate && this.normalizeImageUrl(candidate) === normalized;
+      });
+
+      if (target) {
+        this.setActiveMedia(target.dataset.mediaId);
+      }
+    }
+
+    syncOptionSelectors(optionValues) {
+      if (!Array.isArray(optionValues)) return;
+      this.optionSelects.forEach((select, idx) => {
+        const value = optionValues[idx];
+        if (typeof value === 'string' && select.value !== value) {
+          select.value = value;
+        }
+      });
+    }
+
+    getVariantById(id) {
+      const needle = String(id || '');
+      if (!needle || !this.product || !Array.isArray(this.product.variants)) return null;
+      return this.product.variants.find((v) => String(v.id) === needle) || null;
+    }
+
+    getVariantForPack(packSize) {
+      if (!this.usesPackOption || !this.product || !Array.isArray(this.product.variants)) return null;
+      const packValue = this.packOptionValues[packSize];
+      if (!packValue) return null;
+
+      let selections = this.optionSelects.map((select) => select.value);
+      if (!selections.length && Array.isArray(this.currentVariant?.options)) {
+        selections = [...this.currentVariant.options];
+      }
+
+      if (!selections.length) return null;
+
+      selections[this.packOptionIndex] = packValue;
+
+      return (
+        this.product.variants.find((variant) => {
+          if (!Array.isArray(variant.options)) return false;
+          return variant.options.every((opt, idx) => opt === selections[idx]);
+        }) || null
+      );
+    }
+
+    firstAvailableVariant() {
+      if (!this.product || !Array.isArray(this.product.variants)) return null;
+      return this.product.variants.find((v) => !!v.available) || null;
+    }
+
+    toInt(value, fallback = 0) {
+      const parsed = parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
     formatMoney(cents) {
-      const safeCents = Number.isFinite(parseInt(cents, 10)) ? parseInt(cents, 10) : 0;
+      const safeCents = this.toInt(cents, 0);
       const currencyCode = this.root.dataset.currencyCode || 'USD';
 
+      // Prefer Shopify formatter when available
       if (window.Shopify && typeof window.Shopify.formatMoney === 'function') {
         try {
           const format = window.Shopify.money_format || '${{amount}}';
           return window.Shopify.formatMoney(safeCents, format);
         } catch (e) {
-          // fall through
+          // Fall through to Intl formatter
         }
       }
 
+      // Intl fallback
       try {
         return new Intl.NumberFormat(document.documentElement.lang || 'en-US', {
           style: 'currency',
@@ -593,6 +510,50 @@
       } catch (e) {
         return `$${(safeCents / 100).toFixed(2)}`;
       }
+    }
+
+    parsePackSize(value) {
+      if (!value) return null;
+      const match = String(value).match(/(^|\D)(1|2|4)(\D|$)/);
+      if (!match) return null;
+      return this.toInt(match[2], null);
+    }
+
+    syncPackToVariant(variant) {
+      if (!this.usesPackOption || !variant || !Array.isArray(variant.options)) return;
+      const packValue = variant.options[this.packOptionIndex];
+      const packSize = this.parsePackSize(packValue);
+      if (packSize && packSize !== this.currentPack) {
+        this.currentPack = packSize;
+        this.syncPackUi();
+      }
+    }
+
+    syncPackUi() {
+      if (this.usesPackOption && this.qtyInput) {
+        this.qtyInput.value = '1';
+      }
+
+      this.packRadios.forEach((radio) => {
+        radio.checked = this.toInt(radio.value, 0) === this.currentPack;
+      });
+
+      this.packCards.forEach((card) => {
+        const cardQty = this.toInt(card.dataset.packCard, 0);
+        card.classList.toggle('is-active', cardQty === this.currentPack);
+      });
+
+      if (this.stickyPack && this.stickyPack.value !== String(this.currentPack)) {
+        this.stickyPack.value = String(this.currentPack);
+      }
+    }
+
+    normalizeImageUrl(url) {
+      if (!url) return '';
+      return String(url)
+        .split('?')[0]
+        .replace(/_(\\d+x\\d+|\\d+x|\\d+)(?=\\.[a-z]+$)/i, '')
+        .toLowerCase();
     }
   }
 
@@ -617,3 +578,4 @@
     boot(event.target);
   });
 })();
+
