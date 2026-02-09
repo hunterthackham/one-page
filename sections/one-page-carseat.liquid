@@ -4,12 +4,21 @@
     assign featured_product = product
   endif
 
-  assign default_pack = section.settings.default_pack | default: '2'
-  assign default_pack_qty = default_pack | plus: 0
-  if default_pack_qty == 0
-    assign default_pack_qty = 2
+  assign pack_option_index = -1
+  assign pack_option = blank
+  assign pack_option_name_key = section.settings.pack_option_name | default: 'Pack Size' | downcase | strip
+
+  if featured_product != blank
+    for option in featured_product.options_with_values
+      assign opt_name = option.name | downcase | strip
+      if pack_option_index == -1 and (opt_name == pack_option_name_key or opt_name contains pack_option_name_key or pack_option_name_key contains opt_name)
+        assign pack_option_index = forloop.index0
+        assign pack_option = option
+      endif
+    endfor
   endif
 %}
+
 
 {{ 'one-page-carseat.css' | asset_url | stylesheet_tag }}
 <script src="{{ 'one-page-carseat.js' | asset_url }}" defer="defer"></script>
@@ -1184,3 +1193,4 @@
   ]
 }
 {% endschema %}
+
