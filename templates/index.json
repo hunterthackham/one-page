@@ -40,6 +40,13 @@
             "a": "Your package includes the quantity shown in your selected offer (1-pack, 2-pack, or 4-pack).\nEach pack contains the corresponding number of gap filler pieces. Exact color/style follows the option you choose at checkout."
           }
         },
+        "faq_cEgyAF": {
+          "type": "faq",
+          "settings": {
+            "q": "What material is it made from?",
+            "a": "It’s made from durable, flexible material designed for daily car use.\nLike any interior accessory, appearance and feel can vary slightly by batch and lighting."
+          }
+        },
         "faq_pE494k": {
           "type": "faq",
           "settings": {
@@ -53,6 +60,7 @@
         "faq_CTWaEK",
         "faq_qWR9Nx",
         "faq_hTjeic",
+        "faq_cEgyAF",
         "faq_pE494k"
       ],
       "name": "One Page Car Seat",
