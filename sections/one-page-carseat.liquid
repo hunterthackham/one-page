@@ -241,6 +241,10 @@
 
           {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
             <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
+            <input type="hidden" name="quantity" value="{{ default_pack_qty }}" data-quantity-input>
+
+          {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
+            <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
             <input type="hidden" name="quantity" value="{% if uses_pack_option %}1{% else %}{{ default_pack_qty }}{% endif %}" data-quantity-input>
 
             {% unless featured_product.has_only_default_variant %}
