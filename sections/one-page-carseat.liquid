@@ -624,7 +624,33 @@
     </div>
 
     <script type="application/json" data-product-json>
-      {{ featured_product | json }}
+      {
+        "id": {{ featured_product.id | json }},
+        "title": {{ featured_product.title | json }},
+        "options": {{ featured_product.options | json }},
+        "variants": [
+          {%- for variant in featured_product.variants -%}
+            {
+              "id": {{ variant.id | json }},
+              "available": {{ variant.available | json }},
+              "price": {{ variant.price | json }},
+              "compare_at_price": {{ variant.compare_at_price | json }},
+              "options": {{ variant.options | json }},
+              "featured_media": {% if variant.featured_media %}{"id": {{ variant.featured_media.id | json }}}{% else %}null{% endif %},
+              "featured_image":
+                {%- if variant.featured_image -%}
+                  {
+                    "id": {{ variant.featured_image.id | json }},
+                    "src": {{ variant.featured_image | image_url: width: 1400 | json }}
+                  }
+                {%- else -%}
+                  null
+                {%- endif -%}
+            }
+            {%- unless forloop.last -%},{%- endunless -%}
+          {%- endfor -%}
+        ]
+      }
     </script>
   {% endif %}
 </section>
