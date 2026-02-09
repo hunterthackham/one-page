@@ -10,6 +10,9 @@
       this.product = null;
       this.currentVariant = null;
       this.currentPack = this.toInt(root.dataset.defaultPack, 2);
+      this.packOptionIndex = null;
+      this.packOptionValues = {};
+      this.usesPackOption = false;
 
       this.optionSelects = Array.from(root.querySelectorAll('[data-option-index]'));
       this.variantIdInput = root.querySelector('[data-variant-id-input]');
@@ -21,6 +24,10 @@
 
       this.mediaItems = Array.from(root.querySelectorAll('[data-media-id]'));
       this.mediaThumbs = Array.from(root.querySelectorAll('[data-media-thumb]'));
+      this.mediaPrev = root.querySelector('[data-media-prev]');
+      this.mediaNext = root.querySelector('[data-media-next]');
+      this.mediaOrder = [];
+      this.activeMediaIndex = 0;
 
       this.packRadios = Array.from(root.querySelectorAll('[data-pack-radio]'));
       this.packPickButtons = Array.from(root.querySelectorAll('[data-pack-pick]'));
@@ -44,6 +51,7 @@
 
     init() {
       this.parseProductData();
+      this.resolvePackOption();
       this.bindVariantEvents();
       this.bindPackEvents();
       this.bindMediaEvents();
@@ -66,6 +74,35 @@
         console.warn('[OnePageCarSeat] Product JSON parse failed', err);
         this.product = null;
       }
+    }
+
+    resolvePackOption() {
+      if (!this.product || !Array.isArray(this.product.options)) return;
+
+      const packSelect = this.root.querySelector('[data-pack-option]');
+      const domIndex = packSelect ? this.toInt(packSelect.dataset.optionIndex, -1) : -1;
+      const packIndex = domIndex >= 0
+        ? domIndex
+        : this.product.options.findIndex((option) => {
+          const normalized = String(option).toLowerCase();
+          return normalized.includes('pack') || normalized.includes('bundle');
+        });
+
+      if (packIndex === -1) return;
+
+      this.packOptionIndex = packIndex;
+      this.packOptionValues = {};
+
+      this.product.variants.forEach((variant) => {
+        if (!Array.isArray(variant.options)) return;
+        const value = variant.options[packIndex];
+        const packSize = this.parsePackSize(value);
+        if (packSize && !this.packOptionValues[packSize]) {
+          this.packOptionValues[packSize] = value;
+        }
+      });
+
+      this.usesPackOption = Object.keys(this.packOptionValues).length > 0;
     }
 
     bindVariantEvents() {
@@ -103,6 +140,8 @@
     }
 
     bindMediaEvents() {
+      this.refreshMediaOrder();
+
       this.mediaThumbs.forEach((btn) => {
         btn.addEventListener('click', () => {
           const mediaId = btn.dataset.mediaId;
@@ -110,6 +149,14 @@
           this.setActiveMedia(mediaId);
         });
       });
+
+      if (this.mediaPrev) {
+        this.mediaPrev.addEventListener('click', () => this.stepMedia(-1));
+      }
+
+      if (this.mediaNext) {
+        this.mediaNext.addEventListener('click', () => this.stepMedia(1));
+      }
     }
 
     bindSubmitMirrors() {
@@ -193,22 +240,22 @@
       const normalized = [1, 2, 4].includes(qty) ? qty : 1;
       this.currentPack = normalized;
 
-      if (this.qtyInput) this.qtyInput.value = String(normalized);
-
-      this.packRadios.forEach((radio) => {
-        radio.checked = this.toInt(radio.value, 0) === normalized;
-      });
-
-      this.packCards.forEach((card) => {
-        const cardQty = this.toInt(card.dataset.packCard, 0);
-        card.classList.toggle('is-active', cardQty === normalized);
-      });
-
-      if (this.stickyPack && this.stickyPack.value !== String(normalized)) {
-        this.stickyPack.value = String(normalized);
+      if (this.usesPackOption) {
+        if (this.qtyInput) this.qtyInput.value = '1';
+        const packValue = this.packOptionValues[normalized];
+        if (packValue && this.optionSelects[this.packOptionIndex]) {
+          this.optionSelects[this.packOptionIndex].value = packValue;
+        }
+      } else {
+        if (this.qtyInput) this.qtyInput.value = String(normalized);
       }
 
-      if (this.currentVariant) {
+      this.syncPackUi();
+
+      if (this.usesPackOption) {
+        const variant = this.resolveVariant();
+        this.updateVariant(variant);
+      } else if (this.currentVariant) {
         this.updatePriceCluster(this.currentVariant);
         this.updateOfferTotals(this.currentVariant);
       }
@@ -247,11 +294,12 @@
 
     updateVariant(variant) {
       if (!variant) {
-        this.setSoldOutState(true);
+        this.setSoldOutState(false);
         return;
       }
 
       this.currentVariant = variant;
+      this.syncPackToVariant(variant);
 
       if (this.variantIdInput) {
         this.variantIdInput.value = String(variant.id);
@@ -265,8 +313,9 @@
 
     updatePriceCluster(variant) {
       const qty = this.currentPack || 1;
-      const priceCents = this.toInt(variant.price, 0) * qty;
-      const compareCents = this.toInt(variant.compare_at_price, 0) * qty;
+      const multiplier = this.usesPackOption ? 1 : qty;
+      const priceCents = this.toInt(variant.price, 0) * multiplier;
+      const compareCents = this.toInt(variant.compare_at_price, 0) * multiplier;
       const showCompare = compareCents > priceCents && compareCents > 0;
 
       if (this.priceEl) {
@@ -294,14 +343,21 @@
 
       priceNodes.forEach((node) => {
         const qty = this.toInt(node.dataset.packTotalPrice, 1);
-        const cents = this.toInt(variant.price, 0) * qty;
-        node.textContent = this.formatMoney(cents);
+        if (this.usesPackOption) {
+          const packVariant = this.getVariantForPack(qty) || variant;
+          node.textContent = this.formatMoney(this.toInt(packVariant.price, 0));
+        } else {
+          const cents = this.toInt(variant.price, 0) * qty;
+          node.textContent = this.formatMoney(cents);
+        }
       });
 
       compareNodes.forEach((node) => {
         const qty = this.toInt(node.dataset.packTotalCompare, 1);
-        const basePrice = this.toInt(variant.price, 0) * qty;
-        const compare = this.toInt(variant.compare_at_price, 0) * qty;
+        const packVariant = this.usesPackOption ? this.getVariantForPack(qty) || variant : variant;
+        const multiplier = this.usesPackOption ? 1 : qty;
+        const basePrice = this.toInt(packVariant.price, 0) * multiplier;
+        const compare = this.toInt(packVariant.compare_at_price, 0) * multiplier;
         if (compare > basePrice && compare > 0) {
           node.textContent = this.formatMoney(compare);
           node.classList.remove('is-hidden');
@@ -313,7 +369,7 @@
     }
 
     updateAvailability(variant) {
-      const soldOut = !(variant && variant.available);
+      const soldOut = Boolean(variant && variant.available === false);
 
       this.setSoldOutState(soldOut);
     }
@@ -344,19 +400,35 @@
 
       if (featuredMediaId) {
         this.setActiveMedia(String(featuredMediaId));
+        return;
+      }
+
+      const featuredSrc = variant.featured_image?.src || variant.featured_image?.url;
+      if (featuredSrc) {
+        this.setActiveMediaBySrc(featuredSrc);
       }
     }
 
     setActiveMedia(mediaId) {
       if (!mediaId) return;
 
+      const targetIndex = this.getMediaIndexById(mediaId);
+      if (targetIndex === null) {
+        this.ensureActiveMedia();
+        return;
+      }
+
+      this.activeMediaIndex = targetIndex;
+
       this.mediaItems.forEach((item) => {
         const isActive = String(item.dataset.mediaId) === String(mediaId);
         item.classList.toggle('is-active', isActive);
         if (isActive) {
-          item.removeAttribute('hidden');
+          item.removeAttribute('aria-hidden');
+          item.removeAttribute('inert');
         } else {
-          item.setAttribute('hidden', 'hidden');
+          item.setAttribute('aria-hidden', 'true');
+          item.setAttribute('inert', '');
           const video = item.querySelector('video');
           if (video && !video.paused) video.pause();
         }
@@ -366,6 +438,23 @@
         const isActive = String(btn.dataset.mediaId) === String(mediaId);
         btn.classList.toggle('is-active', isActive);
       });
+    }
+
+    setActiveMediaBySrc(src) {
+      const normalized = this.normalizeImageUrl(src);
+      if (!normalized) return;
+
+      const target = this.mediaItems.find((item) => {
+        const candidate = item.dataset.mediaSrc;
+        if (candidate && this.normalizeImageUrl(candidate) === normalized) return true;
+        const img = item.querySelector('img');
+        if (img && this.normalizeImageUrl(img.currentSrc || img.src) === normalized) return true;
+        return false;
+      });
+
+      if (target) {
+        this.setActiveMedia(target.dataset.mediaId);
+      }
     }
 
     syncOptionSelectors(optionValues) {
@@ -382,6 +471,28 @@
       const needle = String(id || '');
       if (!needle || !this.product || !Array.isArray(this.product.variants)) return null;
       return this.product.variants.find((v) => String(v.id) === needle) || null;
+    }
+
+    getVariantForPack(packSize) {
+      if (!this.usesPackOption || !this.product || !Array.isArray(this.product.variants)) return null;
+      const packValue = this.packOptionValues[packSize];
+      if (!packValue) return null;
+
+      let selections = this.optionSelects.map((select) => select.value);
+      if (!selections.length && Array.isArray(this.currentVariant?.options)) {
+        selections = [...this.currentVariant.options];
+      }
+
+      if (!selections.length) return null;
+
+      selections[this.packOptionIndex] = packValue;
+
+      return (
+        this.product.variants.find((variant) => {
+          if (!Array.isArray(variant.options)) return false;
+          return variant.options.every((opt, idx) => opt === selections[idx]);
+        }) || null
+      );
     }
 
     firstAvailableVariant() {
@@ -416,6 +527,90 @@
         }).format(safeCents / 100);
       } catch (e) {
         return `$${(safeCents / 100).toFixed(2)}`;
+      }
+    }
+
+    parsePackSize(value) {
+      if (!value) return null;
+      const match = String(value).match(/(^|\D)(1|2|4)(\D|$)/);
+      if (!match) return null;
+      return this.toInt(match[2], null);
+    }
+
+    syncPackToVariant(variant) {
+      if (!this.usesPackOption || !variant || !Array.isArray(variant.options)) return;
+      const packValue = variant.options[this.packOptionIndex];
+      const packSize = this.parsePackSize(packValue);
+      if (packSize && packSize !== this.currentPack) {
+        this.currentPack = packSize;
+        this.syncPackUi();
+      }
+    }
+
+    syncPackUi() {
+      if (this.usesPackOption && this.qtyInput) {
+        this.qtyInput.value = '1';
+      }
+
+      this.packRadios.forEach((radio) => {
+        radio.checked = this.toInt(radio.value, 0) === this.currentPack;
+      });
+
+      this.packCards.forEach((card) => {
+        const cardQty = this.toInt(card.dataset.packCard, 0);
+        card.classList.toggle('is-active', cardQty === this.currentPack);
+      });
+
+      if (this.stickyPack && this.stickyPack.value !== String(this.currentPack)) {
+        this.stickyPack.value = String(this.currentPack);
+      }
+    }
+
+    normalizeImageUrl(url) {
+      if (!url) return '';
+      return String(url)
+        .replace(/^https?:\/\/[^/]+/i, '')
+        .split('?')[0]
+        .replace(/_(\\d+x\\d+|\\d+x|\\d+)(?=\\.[a-z]+$)/i, '')
+        .toLowerCase();
+    }
+
+    refreshMediaOrder() {
+      this.mediaOrder = this.mediaItems
+        .slice()
+        .sort((a, b) => {
+          const aIndex = this.toInt(a.dataset.mediaIndex, 0);
+          const bIndex = this.toInt(b.dataset.mediaIndex, 0);
+          return aIndex - bIndex;
+        });
+    }
+
+    getMediaIndexById(mediaId) {
+      const index = this.mediaOrder.findIndex(
+        (item) => String(item.dataset.mediaId) === String(mediaId)
+      );
+      return index === -1 ? null : index;
+    }
+
+    ensureActiveMedia() {
+      if (!this.mediaOrder.length) return;
+      const activeItem = this.mediaOrder.find((item) => item.classList.contains('is-active'));
+      if (!activeItem) {
+        this.setActiveMedia(this.mediaOrder[0].dataset.mediaId);
+        return;
+      }
+      const activeIndex = this.getMediaIndexById(activeItem.dataset.mediaId);
+      if (activeIndex !== null) this.activeMediaIndex = activeIndex;
+    }
+
+    stepMedia(direction) {
+      if (this.mediaOrder.length < 2) return;
+      this.ensureActiveMedia();
+      const total = this.mediaOrder.length;
+      const nextIndex = (this.activeMediaIndex + direction + total) % total;
+      const nextItem = this.mediaOrder[nextIndex];
+      if (nextItem) {
+        this.setActiveMedia(nextItem.dataset.mediaId);
       }
     }
   }
