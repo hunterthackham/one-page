@@ -79,33 +79,24 @@
     resolvePackOption() {
       if (!this.product || !Array.isArray(this.product.options)) return;
 
-      const optionsCount = this.product.options.length;
-      let detectedIndex = null;
-      let detectedValues = {};
+      const packIndex = this.product.options.findIndex((option) =>
+        String(option).toLowerCase().includes('pack')
+      );
 
-      for (let index = 0; index < optionsCount; index += 1) {
-        const valuesForIndex = {};
+      if (packIndex === -1) return;
 
-        this.product.variants.forEach((variant) => {
-          if (!Array.isArray(variant.options)) return;
-          const value = variant.options[index];
-          const packSize = this.parsePackSize(value);
-          if (packSize && !valuesForIndex[packSize]) {
-            valuesForIndex[packSize] = value;
-          }
-        });
+      this.packOptionIndex = packIndex;
+      this.packOptionValues = {};
 
-        if (Object.keys(valuesForIndex).length > 0) {
-          detectedIndex = index;
-          detectedValues = valuesForIndex;
-          break;
+      this.product.variants.forEach((variant) => {
+        if (!Array.isArray(variant.options)) return;
+        const value = variant.options[packIndex];
+        const packSize = this.parsePackSize(value);
+        if (packSize && !this.packOptionValues[packSize]) {
+          this.packOptionValues[packSize] = value;
         }
-      }
+      });
 
-      if (detectedIndex === null) return;
-
-      this.packOptionIndex = detectedIndex;
-      this.packOptionValues = detectedValues;
       this.usesPackOption = Object.keys(this.packOptionValues).length > 0;
     }
 
