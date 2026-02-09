@@ -79,9 +79,33 @@
     resolvePackOption() {
       if (!this.product || !Array.isArray(this.product.options)) return;
 
-      const packIndex = this.product.options.findIndex((option) =>
+      let packIndex = this.product.options.findIndex((option) =>
         String(option).toLowerCase().includes('pack')
       );
+
+      if (packIndex === -1) {
+        const optionCount = this.product.options.length;
+        let bestIndex = -1;
+        let bestSizeCount = 0;
+
+        for (let idx = 0; idx < optionCount; idx += 1) {
+          const sizes = new Set();
+          this.product.variants.forEach((variant) => {
+            const value = Array.isArray(variant.options) ? variant.options[idx] : null;
+            const size = this.parsePackSize(value);
+            if (size) sizes.add(size);
+          });
+
+          if (sizes.size > bestSizeCount) {
+            bestSizeCount = sizes.size;
+            bestIndex = idx;
+          }
+        }
+
+        if (bestSizeCount > 0) {
+          packIndex = bestIndex;
+        }
+      }
 
       if (packIndex === -1) return;
 
