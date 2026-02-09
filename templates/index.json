@@ -1,1 +1,143 @@
-{"sections":{"one_page_carseat_MKM9NP":{"type":"one-page-carseat","blocks":{"faq_xzN39Q":{"type":"faq","settings":{"q":"Will this fit my car?","a":"Check the fit section and compare your seat-console gap before ordering."}},"faq_CTWaEK":{"type":"faq","settings":{"q":"Will this fit my car?","a":"Check the fit section and compare your seat-console gap before ordering."}},"faq_qWR9Nx":{"type":"faq","settings":{"q":"Will this fit my car?","a":"Check the fit section and compare your seat-console gap before ordering."}},"faq_hTjeic":{"type":"faq","settings":{"q":"Will this fit my car?","a":"Check the fit section and compare your seat-console gap before ordering."}},"faq_pE494k":{"type":"faq","settings":{"q":"Will this fit my car?","a":"Check the fit section and compare your seat-console gap before ordering."}}},"block_order":["faq_xzN39Q","faq_CTWaEK","faq_qWR9Nx","faq_hTjeic","faq_pE494k"],"name":"One Page Car Seat","settings":{"product":"creative-and-practical-automotive-interior-products-car-seat-gap-plug-anti-leak-strip-multi-functional-storage-box","announcement_enable":false,"announcement_text":"Fast shipping • Easy install • Secure checkout","announcement_chip_1":"Ships in 24–48h","announcement_chip_2":"30-day returns","announcement_chip_3":"Secure checkout","hero_badge":"Stop the drop","hero_heading":"Stop drops from disappearing between your seat and console.","hero_subhead":"A low-profile seat-gap filler that helps block everyday item drops and reduces distraction while driving.","price_context_chip":"Bundle options available","atc_text":"Add Bundle to Cart","sticky_cta_text":"Add Bundle","sold_out_text":"Sold out","trust_line_1":"Clear fit notes before purchase to reduce mismatch returns.","trust_line_2":"Seatbelt path should remain unobstructed when positioned correctly.","trust_line_3":"Support replies in 1 business day.","bridge_heading":"Small gap, constant annoyance.","bridge_body":"Phones, keys, coins, and cards drop into the same hard-to-reach gap. This filler is designed to block that gap with a simple drop-in setup.","bridge_point_1":"Blocks common drop zone near the console","bridge_point_2":"Installs in under a minute per seat","bridge_point_3":"Removable and repositionable","benefits_heading":"Why people buy this first (and keep it)","benefit_1":"Blocks dropped items instantly","benefit_2":"Simple fit around seat belt latch","benefit_3":"Looks clean and blends with interior","benefit_4":"Takes seconds to install","benefit_5":"Helps reduce mid-drive reaching and distraction","benefit_6":"Simple upgrade with high everyday utility","ugc_heading":"Real customer-style clips","ugc_subhead":"Use approved uploads or source links only. Keep clips realistic and fit-focused.","ugc_video_1":"shopify:\/\/files\/videos\/SnapTik.Cx_1770527076.mp4","ugc_link_1":"","ugc_caption_1":"No more phone\/keys falling between seats.","ugc_video_2":"shopify:\/\/files\/videos\/SnapTik.Cx_1770527109.mp4","ugc_link_2":"","ugc_caption_2":"Installs in seconds.","ugc_video_3":"shopify:\/\/files\/videos\/SnapTik.Cx_1770527063.mp4","ugc_link_3":"","ugc_caption_3":"Fits most standard seat gaps.","ugc_video_4":"shopify:\/\/files\/videos\/SnapTik.Cx_1770527095.mp4","ugc_link_4":"","ugc_caption_4":"Cleaner interior, less distraction.","fit_heading":"Will this fit my car?","fit_body":"Please check your seat-console gap shape and buckle position before ordering. This helps prevent mismatch returns.","fit_image":"shopify:\/\/shop_images\/S8a7aa8d0e9014a24b10aed4fa199d8efn.webp","fit_dimensions":"Length: ~17.5 in (44.5 cm)\nGap depth support: typical front-seat gaps\nMaterial: flexible PU\/leather-like exterior (varies by supplier lot)","fit_compatibility":"Works best with standard center-console seat gaps.\nBest results when gap geometry is consistent from front to back.","fit_exclusions":"Not ideal for extra-wide console gaps or very tight custom interiors.\nCheck seat movement and buckle clearance after install.\nIf between fit outcomes, order one set first.","fit_reassurance":"If fit is your top concern, review dimensions and the install clips before checkout.","offer_heading":"Choose your pack","offer_subhead":"Simple quantity-based packs. No confusing option trees.","default_pack":"2","pack_1_label":"1-Pack","pack_1_sub":"Good for one car setup","pack_1_savings":"Starter option","pack_2_label":"2-Pack","pack_2_sub":"Best for two front seats \/ two vehicles","pack_2_badge":"Most Popular","pack_2_savings":"Best value","pack_4_label":"4-Pack","pack_4_sub":"For family cars \/ backup stock","pack_4_savings":"Bulk convenience","offer_note":"Expectation note: 1-Pack equals one unit quantity of this product in cart. Confirm your exact product contents and seat count before ordering.","included_heading":"What's included","included_intro":"Package contents depend on your selected product and quantity. Confirm this section matches your product listing details.","included_item_1":"Car seat gap filler unit(s) based on selected quantity","included_item_2":"Basic usage guidance","included_item_3":"Protective packaging","included_item_4":"Order confirmation + tracking updates","included_item_5":"Support access if fit questions come up","shipping_heading":"Shipping, returns, and support","shipping_text":"Tracked shipping with delivery estimates shown at checkout.","returns_text":"Simple return policy with clear steps if your order isn’t a fit.","support_text":"Need fit help before ordering? Send your car make\/model\/year and a seat-gap photo for a better pre-purchase check.","guarantee_text":"If something arrives damaged or incorrect, contact support for a quick resolution.","faq_heading":"Frequently asked questions","sticky_trust_text":"Secure checkout"}}},"order":["one_page_carseat_MKM9NP"]}
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "one_page_carseat_MKM9NP": {
+      "type": "one-page-carseat",
+      "blocks": {
+        "faq_xzN39Q": {
+          "type": "faq",
+          "settings": {
+            "q": "Will this fit my car?",
+            "a": "It fits most vehicles with a standard gap between the front seat and center console.\nBecause seat and console shapes vary by model/year, we recommend checking the product dimensions on this page before ordering. If your gap is unusually narrow or very wide, fit may vary."
+          }
+        },
+        "faq_CTWaEK": {
+          "type": "faq",
+          "settings": {
+            "q": "Will this fit my car?",
+            "a": "Check the fit section and compare your seat-console gap before ordering."
+          }
+        },
+        "faq_qWR9Nx": {
+          "type": "faq",
+          "settings": {
+            "q": "Will this fit my car?",
+            "a": "Check the fit section and compare your seat-console gap before ordering."
+          }
+        },
+        "faq_hTjeic": {
+          "type": "faq",
+          "settings": {
+            "q": "Will this fit my car?",
+            "a": "Check the fit section and compare your seat-console gap before ordering."
+          }
+        },
+        "faq_pE494k": {
+          "type": "faq",
+          "settings": {
+            "q": "Will this fit my car?",
+            "a": "Check the fit section and compare your seat-console gap before ordering."
+          }
+        }
+      },
+      "block_order": [
+        "faq_xzN39Q",
+        "faq_CTWaEK",
+        "faq_qWR9Nx",
+        "faq_hTjeic",
+        "faq_pE494k"
+      ],
+      "name": "One Page Car Seat",
+      "settings": {
+        "product": "creative-and-practical-automotive-interior-products-car-seat-gap-plug-anti-leak-strip-multi-functional-storage-box",
+        "announcement_enable": false,
+        "announcement_text": "Fast shipping • Easy install • Secure checkout",
+        "announcement_chip_1": "Ships in 24–48h",
+        "announcement_chip_2": "30-day returns",
+        "announcement_chip_3": "Secure checkout",
+        "hero_badge": "Stop the drop",
+        "hero_heading": "Stop drops from disappearing between your seat and console.",
+        "hero_subhead": "A low-profile seat-gap filler that helps block everyday item drops and reduces distraction while driving.",
+        "price_context_chip": "Bundle options available",
+        "atc_text": "Add Bundle to Cart",
+        "sticky_cta_text": "Add Bundle",
+        "sold_out_text": "Sold out",
+        "trust_line_1": "Clear fit notes before purchase to reduce mismatch returns.",
+        "trust_line_2": "Seatbelt path should remain unobstructed when positioned correctly.",
+        "trust_line_3": "Support replies in 1 business day.",
+        "bridge_heading": "Small gap, constant annoyance.",
+        "bridge_body": "Phones, keys, coins, and cards drop into the same hard-to-reach gap. This filler is designed to block that gap with a simple drop-in setup.",
+        "bridge_point_1": "Blocks common drop zone near the console",
+        "bridge_point_2": "Installs in under a minute per seat",
+        "bridge_point_3": "Removable and repositionable",
+        "benefits_heading": "Why people buy this first (and keep it)",
+        "benefit_1": "Blocks dropped items instantly",
+        "benefit_2": "Simple fit around seat belt latch",
+        "benefit_3": "Looks clean and blends with interior",
+        "benefit_4": "Takes seconds to install",
+        "benefit_5": "Helps reduce mid-drive reaching and distraction",
+        "benefit_6": "Simple upgrade with high everyday utility",
+        "ugc_heading": "Real customer-style clips",
+        "ugc_subhead": "Use approved uploads or source links only. Keep clips realistic and fit-focused.",
+        "ugc_video_1": "shopify://files/videos/SnapTik.Cx_1770527076.mp4",
+        "ugc_link_1": "",
+        "ugc_caption_1": "No more phone/keys falling between seats.",
+        "ugc_video_2": "shopify://files/videos/SnapTik.Cx_1770527109.mp4",
+        "ugc_link_2": "",
+        "ugc_caption_2": "Installs in seconds.",
+        "ugc_video_3": "shopify://files/videos/SnapTik.Cx_1770527063.mp4",
+        "ugc_link_3": "",
+        "ugc_caption_3": "Fits most standard seat gaps.",
+        "ugc_video_4": "shopify://files/videos/SnapTik.Cx_1770527095.mp4",
+        "ugc_link_4": "",
+        "ugc_caption_4": "Cleaner interior, less distraction.",
+        "fit_heading": "Will this fit my car?",
+        "fit_body": "Please check your seat-console gap shape and buckle position before ordering. This helps prevent mismatch returns.",
+        "fit_image": "shopify://shop_images/S8a7aa8d0e9014a24b10aed4fa199d8efn.webp",
+        "fit_dimensions": "Length: ~17.5 in (44.5 cm)\nGap depth support: typical front-seat gaps\nMaterial: flexible PU/leather-like exterior (varies by supplier lot)",
+        "fit_compatibility": "Works best with standard center-console seat gaps.\nBest results when gap geometry is consistent from front to back.",
+        "fit_exclusions": "Not ideal for extra-wide console gaps or very tight custom interiors.\nCheck seat movement and buckle clearance after install.\nIf between fit outcomes, order one set first.",
+        "fit_reassurance": "If fit is your top concern, review dimensions and the install clips before checkout.",
+        "offer_heading": "Choose your pack",
+        "offer_subhead": "Simple quantity-based packs. No confusing option trees.",
+        "default_pack": "2",
+        "pack_1_label": "1-Pack",
+        "pack_1_sub": "Good for one car setup",
+        "pack_1_savings": "Starter option",
+        "pack_2_label": "2-Pack",
+        "pack_2_sub": "Best for two front seats / two vehicles",
+        "pack_2_badge": "Most Popular",
+        "pack_2_savings": "Best value",
+        "pack_4_label": "4-Pack",
+        "pack_4_sub": "For family cars / backup stock",
+        "pack_4_savings": "Bulk convenience",
+        "offer_note": "Expectation note: 1-Pack equals one unit quantity of this product in cart. Confirm your exact product contents and seat count before ordering.",
+        "included_heading": "What's included",
+        "included_intro": "Package contents depend on your selected product and quantity. Confirm this section matches your product listing details.",
+        "included_item_1": "Car seat gap filler unit(s) based on selected quantity",
+        "included_item_2": "Basic usage guidance",
+        "included_item_3": "Protective packaging",
+        "included_item_4": "Order confirmation + tracking updates",
+        "included_item_5": "Support access if fit questions come up",
+        "shipping_heading": "Shipping, returns, and support",
+        "shipping_text": "Tracked shipping with delivery estimates shown at checkout.",
+        "returns_text": "Simple return policy with clear steps if your order isn’t a fit.",
+        "support_text": "Need fit help before ordering? Send your car make/model/year and a seat-gap photo for a better pre-purchase check.",
+        "guarantee_text": "If something arrives damaged or incorrect, contact support for a quick resolution.",
+        "faq_heading": "Frequently asked questions",
+        "sticky_trust_text": "Secure checkout"
+      }
+    }
+  },
+  "order": [
+    "one_page_carseat_MKM9NP"
+  ]
+}
