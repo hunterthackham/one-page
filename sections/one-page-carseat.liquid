@@ -20,6 +20,7 @@
   data-opc-root
   data-section-id="{{ section.id }}"
   data-currency-code="{{ cart.currency.iso_code | default: shop.currency }}"
+  data-product-handle="{{ featured_product.handle }}"
   data-default-pack="{{ default_pack_qty }}"
   data-pack-label-1="{{ section.settings.pack_1_label | default: '1-Pack' | escape }}"
   data-pack-label-2="{{ section.settings.pack_2_label | default: '2-Pack' | escape }}"
@@ -631,31 +632,22 @@
           {%- for variant in featured_product.variants -%}
             {
               "id": {{ variant.id | json }},
-              "title": {{ variant.title | json }},
               "available": {{ variant.available | json }},
               "price": {{ variant.price | json }},
               "compare_at_price": {{ variant.compare_at_price | json }},
               "options": {{ variant.options | json }},
-              "featured_media": {%- if variant.featured_media -%}
-                {
-                  "id": {{ variant.featured_media.id | json }},
-                  "preview_image": {
-                    "src": {{ variant.featured_media.preview_image | image_url: width: 2048 | json }}
+              "featured_media": {% if variant.featured_media %}{"id": {{ variant.featured_media.id | json }}}{% else %}null{% endif %},
+              "featured_image":
+                {%- if variant.featured_image -%}
+                  {
+                    "id": {{ variant.featured_image.id | json }},
+                    "src": {{ variant.featured_image | image_url: width: 1400 | json }}
                   }
-                }
-              {%- else -%}
-                null
-              {%- endif -%},
-              "featured_image": {%- if variant.featured_image -%}
-                {
-                  "id": {{ variant.featured_image.id | json }},
-                  "src": {{ variant.featured_image | image_url: width: 2048 | json }},
-                  "url": {{ variant.featured_image | image_url: width: 2048 | json }}
-                }
-              {%- else -%}
-                null
-              {%- endif -%}
-            }{%- unless forloop.last -%},{%- endunless -%}
+                {%- else -%}
+                  null
+                {%- endif -%}
+            }
+            {%- unless forloop.last -%},{%- endunless -%}
           {%- endfor -%}
         ]
       }
