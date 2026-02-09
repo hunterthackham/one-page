@@ -4,6 +4,14 @@
     assign featured_product = product
   endif
 
+  assign current_variant = blank
+  if featured_product != blank
+    assign current_variant = featured_product.selected_or_first_available_variant
+    if current_variant == blank and featured_product.variants.size > 0
+      assign current_variant = featured_product.variants.first
+    endif
+  endif
+
   assign pack_option_index = -1
   assign pack_option = blank
   assign pack_option_name_key = section.settings.pack_option_name | default: 'Pack Size' | downcase | strip
@@ -19,9 +27,8 @@
   endif
 %}
 
-
 {{ 'one-page-carseat.css' | asset_url | stylesheet_tag }}
-<script src="{{ 'one-page-carseat.js' | asset_url }}" defer="defer"></script>
+<script src="{{ 'one-page-carseat.js' | asset_url }}" defer></script>
 
 <section
   id="opc-{{ section.id }}"
@@ -29,188 +36,102 @@
   data-opc-root
   data-section-id="{{ section.id }}"
   data-currency-code="{{ cart.currency.iso_code | default: shop.currency }}"
-  data-default-pack="{{ default_pack_qty }}"
-  data-pack-label-1="{{ section.settings.pack_1_label | default: '1-Pack' | escape }}"
-  data-pack-label-2="{{ section.settings.pack_2_label | default: '2-Pack' | escape }}"
-  data-pack-label-4="{{ section.settings.pack_4_label | default: '4-Pack' | escape }}"
+  data-pack-option-index="{{ pack_option_index }}"
+  data-has-pack-option="{% if pack_option_index >= 0 %}true{% else %}false{% endif %}"
 >
   {% if featured_product == blank %}
-    <div class="opc-container">
-      <div class="opc-empty">
-        <h2 class="opc-empty__title">Select a product to activate this one-page landing section</h2>
-        <p class="opc-empty__body">
-          In Theme Editor, open this section and choose your product in <strong>Product source</strong>.
-          This section is built for one hero product with pack quantity offers (1 / 2 / 4).
-        </p>
-        <ol class="opc-empty__steps">
-          <li>Customize → open this section</li>
-          <li>Set <strong>Product source</strong></li>
-          <li>Confirm variants, media, price, and UGC fields</li>
-          <li>Save and preview on mobile first</li>
-        </ol>
-      </div>
+    <div class="opc-empty">
+      <h2>No product selected yet</h2>
+      <p>In Theme Editor, open this section and select a product in <strong>Product source</strong>.</p>
+      <ol>
+        <li>Customize theme</li>
+        <li>Open “One Page Car Seat” section</li>
+        <li>Choose product</li>
+        <li>Save</li>
+      </ol>
     </div>
   {% else %}
-    {% liquid
-      assign current_variant = featured_product.selected_or_first_available_variant
-      assign active_media = current_variant.featured_media | default: featured_product.featured_media
-      assign active_media_id = active_media.id
-      assign form_id = 'opc-form-' | append: section.id
-      assign has_compare = false
-      if current_variant.compare_at_price > current_variant.price
-        assign has_compare = true
-      endif
+    <script type="application/json" data-product-json>
+      {{ featured_product | json }}
+    </script>
 
-      assign uses_pack_option = false
-      for option_name in featured_product.options
-        if option_name != blank and option_name | downcase contains 'pack'
-          assign uses_pack_option = true
-          break
-        endif
-      endfor
-
-      assign pack_multiplier = default_pack_qty
-      if uses_pack_option
-        assign pack_multiplier = 1
-      endif
-
-      assign has_ugc = false
-      for i in (1..4)
-        assign k_video = 'ugc_video_' | append: i
-        assign k_image = 'ugc_image_' | append: i
-        assign k_link = 'ugc_link_' | append: i
-        assign k_caption = 'ugc_caption_' | append: i
-        if section.settings[k_video] != blank or section.settings[k_image] != blank or section.settings[k_link] != blank or section.settings[k_caption] != blank
-          assign has_ugc = true
-          break
-        endif
-      endfor
-    %}
-
-    {%- if section.settings.announcement_enable and section.settings.announcement_text != blank -%}
-      <div class="opc-announcement" role="status" aria-label="Store reassurance">
-        <div class="opc-container opc-announcement__inner">
-          <p class="opc-announcement__text">{{ section.settings.announcement_text }}</p>
-          <div class="opc-announcement__chips" aria-hidden="true">
-            {%- if section.settings.announcement_chip_1 != blank -%}<span class="opc-chip">{{ section.settings.announcement_chip_1 }}</span>{%- endif -%}
-            {%- if section.settings.announcement_chip_2 != blank -%}<span class="opc-chip">{{ section.settings.announcement_chip_2 }}</span>{%- endif -%}
-            {%- if section.settings.announcement_chip_3 != blank -%}<span class="opc-chip">{{ section.settings.announcement_chip_3 }}</span>{%- endif -%}
-          </div>
+    {%- comment -%}
+      1) Announcement / trust strip
+    {%- endcomment -%}
+    {% if section.settings.show_announcement and section.settings.announcement_text != blank %}
+      <div class="opc-announcement" role="status" aria-live="polite">
+        <div class="opc-announcement__inner page-width">
+          {% if section.settings.announcement_chip != blank %}
+            <span class="opc-chip">{{ section.settings.announcement_chip }}</span>
+          {% endif %}
+          <p>{{ section.settings.announcement_text }}</p>
         </div>
       </div>
-    {%- endif -%}
+    {% endif %}
 
-    <div class="opc-container">
-      <!-- 2) HERO -->
-      <section class="opc-hero" data-hero>
-        <div class="opc-hero__media">
-          <div class="opc-media-stage" aria-label="Product media gallery">
+    {%- comment -%}
+      2) Hero
+    {%- endcomment -%}
+    <div class="opc-hero page-width" data-hero>
+      <div class="opc-hero__grid">
+        <div class="opc-media">
+          <div class="opc-media-stage">
             {% if featured_product.media.size > 0 %}
               {% for media in featured_product.media %}
+                {% assign is_active_media = false %}
+                {% if current_variant.featured_media != blank and current_variant.featured_media.id == media.id %}
+                  {% assign is_active_media = true %}
+                {% elsif current_variant.featured_media == blank and forloop.first %}
+                  {% assign is_active_media = true %}
+                {% endif %}
                 <div
-                  class="opc-media-item{% if media.id == active_media_id %} is-active{% endif %}"
+                  class="opc-media-item{% if is_active_media %} is-active{% endif %}"
                   data-media-id="{{ media.id }}"
-                  {% if media.preview_image %}
-                    data-media-src="{{ media.preview_image | image_url: width: 2048 }}"
-                  {% endif %}
-                  {% unless media.id == active_media_id %}hidden{% endunless %}
+                  {% unless is_active_media %}hidden{% endunless %}
                 >
                   {% case media.media_type %}
                     {% when 'image' %}
-                      {{
-                        media
-                        | image_url: width: 1400
-                        | image_tag:
-                          loading: 'eager',
-                          widths: '420, 640, 900, 1200, 1400',
-                          sizes: '(min-width: 990px) 50vw, 100vw',
-                          alt: media.alt | default: featured_product.title
-                      }}
+                      {{ media | image_url: width: 1400 | image_tag: loading: 'eager', widths: '360,540,720,900,1100,1400', class: 'opc-media-item__img', alt: media.alt | escape }}
                     {% when 'video' %}
-                      {{
-                        media
-                        | media_tag:
-                          controls: true,
-                          autoplay: false,
-                          loop: false,
-                          preload: 'metadata',
-                          image_size: '1200x'
-                      }}
+                      {{ media | media_tag: controls: true, preload: 'metadata', autoplay: false, loop: false, class: 'opc-media-item__video' }}
                     {% when 'external_video' %}
-                      {{
-                        media
-                        | media_tag:
-                          controls: true,
-                          autoplay: false,
-                          loop: false
-                      }}
+                      {{ media | media_tag: class: 'opc-media-item__video' }}
                     {% else %}
-                      {% if media.preview_image %}
-                        {{
-                          media.preview_image
-                          | image_url: width: 1400
-                          | image_tag:
-                            loading: 'lazy',
-                            widths: '420, 640, 900, 1200, 1400',
-                            sizes: '(min-width: 990px) 50vw, 100vw',
-                            alt: media.alt | default: featured_product.title
-                        }}
-                      {% else %}
-                        <div class="opc-media-placeholder">No media preview</div>
-                      {% endif %}
+                      {{ media | media_tag: class: 'opc-media-item__video' }}
                   {% endcase %}
                 </div>
               {% endfor %}
-            {% elsif section.settings.hero_fallback_image != blank %}
-              <div class="opc-media-item is-active" data-media-id="fallback">
-                {{
-                  section.settings.hero_fallback_image
-                  | image_url: width: 1400
-                  | image_tag:
-                    loading: 'eager',
-                    widths: '420, 640, 900, 1200, 1400',
-                    sizes: '(min-width: 990px) 50vw, 100vw',
-                    alt: featured_product.title
-                }}
+            {% elsif featured_product.featured_image != blank %}
+              <div class="opc-media-item is-active" data-media-id="featured" aria-hidden="false">
+                {{ featured_product.featured_image | image_url: width: 1400 | image_tag: loading: 'eager', widths: '360,540,720,900,1100,1400', class: 'opc-media-item__img', alt: featured_product.title | escape }}
               </div>
             {% else %}
               <div class="opc-media-item is-active" data-media-id="placeholder">
-                <div class="opc-media-placeholder">Add product media to show the hero gallery</div>
+                <div class="opc-media-placeholder">No media available for this product yet.</div>
               </div>
-            {% endif %}
-
-            {% if featured_product.media.size > 1 %}
-              <button type="button" class="opc-media-nav opc-media-nav--prev" data-media-prev aria-label="Previous image">
-                <span aria-hidden="true">‹</span>
-              </button>
-              <button type="button" class="opc-media-nav opc-media-nav--next" data-media-next aria-label="Next image">
-                <span aria-hidden="true">›</span>
-              </button>
             {% endif %}
           </div>
 
           {% if featured_product.media.size > 1 %}
-            <div class="opc-thumb-row" aria-label="Choose product media">
+            <div class="opc-media-thumbs" role="list" aria-label="Product media thumbnails">
               {% for media in featured_product.media %}
+                {% assign thumb_active = false %}
+                {% if current_variant.featured_media != blank and current_variant.featured_media.id == media.id %}
+                  {% assign thumb_active = true %}
+                {% elsif current_variant.featured_media == blank and forloop.first %}
+                  {% assign thumb_active = true %}
+                {% endif %}
                 <button
                   type="button"
-                  class="opc-thumb-btn{% if media.id == active_media_id %} is-active{% endif %}"
+                  class="opc-media-thumb{% if thumb_active %} is-active{% endif %}"
                   data-media-thumb
                   data-media-id="{{ media.id }}"
-                  aria-label="Show media {{ forloop.index }}"
+                  aria-label="View media {{ forloop.index }}"
                 >
-                  {% if media.preview_image %}
-                    {{
-                      media.preview_image
-                      | image_url: width: 180
-                      | image_tag:
-                        loading: 'lazy',
-                        widths: '90, 120, 180',
-                        sizes: '72px',
-                        alt: media.alt | default: featured_product.title
-                    }}
+                  {% if media.preview_image != blank %}
+                    {{ media.preview_image | image_url: width: 180 | image_tag: loading: 'lazy', widths: '90,120,180', alt: media.alt | escape }}
                   {% else %}
-                    <span class="opc-thumb-fallback">Media {{ forloop.index }}</span>
+                    <span>Media {{ forloop.index }}</span>
                   {% endif %}
                 </button>
               {% endfor %}
@@ -219,57 +140,50 @@
         </div>
 
         <div class="opc-hero__content">
-          {% if section.settings.hero_badge != blank %}
-            <span class="opc-badge">{{ section.settings.hero_badge }}</span>
+          {% if section.settings.hero_kicker != blank %}
+            <p class="opc-kicker">{{ section.settings.hero_kicker }}</p>
           {% endif %}
 
           <h1 class="opc-title">
-            {{ section.settings.hero_heading | default: 'Stop drops from disappearing between your seat and console.' }}
+            {{ section.settings.hero_title | default: 'Stop losing items in the seat gap.' }}
           </h1>
 
-          {% if section.settings.hero_subhead != blank %}
-            <p class="opc-subhead">{{ section.settings.hero_subhead }}</p>
+          {% if section.settings.hero_subtitle != blank %}
+            <p class="opc-subtitle">{{ section.settings.hero_subtitle }}</p>
           {% endif %}
 
-          <div class="opc-price-panel" aria-live="polite">
-            <div class="opc-price-line">
-              <span class="opc-price" data-price>{{ current_variant.price | times: pack_multiplier | money }}</span>
-              <span class="opc-compare{% unless has_compare %} is-hidden{% endunless %}" data-compare-price>
-                {% if has_compare %}
-                  {{ current_variant.compare_at_price | times: pack_multiplier | money }}
+          <div class="opc-price-wrap" aria-live="polite">
+            <div class="opc-price-row">
+              <span class="opc-price" data-price>{{ current_variant.price | money }}</span>
+              <span class="opc-compare{% unless current_variant.compare_at_price > current_variant.price %} is-hidden{% endunless %}" data-compare-price>
+                {% if current_variant.compare_at_price > current_variant.price %}
+                  {{ current_variant.compare_at_price | money }}
                 {% endif %}
               </span>
             </div>
-            {% if section.settings.price_context_chip != blank %}
-              <span class="opc-price-chip">{{ section.settings.price_context_chip }}</span>
-            {% endif %}
             <p class="opc-price-note">
-              Price shown for selected pack size.
+              {{ section.settings.price_note | default: 'Price shown for selected pack size variant.' }}
             </p>
           </div>
 
-          {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
+          <form method="post" action="/cart/add" enctype="multipart/form-data" class="opc-form js-opc-form">
             <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
-            <input type="hidden" name="quantity" value="{{ default_pack_qty }}" data-quantity-input>
-
-          {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
-            <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
-            <input type="hidden" name="quantity" value="{% if uses_pack_option %}1{% else %}{{ default_pack_qty }}{% endif %}" data-quantity-input>
 
             {% unless featured_product.has_only_default_variant %}
               <div class="opc-fieldset" role="group" aria-label="Choose product options">
                 {% for option in featured_product.options_with_values %}
                   {% assign option_index = forloop.index0 %}
+                  {% if option_index == pack_option_index %}
+                    {% continue %}
+                  {% endif %}
                   {% assign selected_option_value = current_variant.options[option_index] %}
-                  {% assign option_name_downcase = option.name | downcase %}
-                  <div class="opc-field{% if option_name_downcase contains 'pack' %} opc-field--hidden{% endif %}">
+                  <div class="opc-field">
                     <label for="Option-{{ section.id }}-{{ option_index }}">{{ option.name }}</label>
                     <select
                       id="Option-{{ section.id }}-{{ option_index }}"
-                      class="opc-select{% if option_name_downcase contains 'pack' %} opc-select--hidden{% endif %}"
+                      class="opc-select"
                       data-option-index="{{ option_index }}"
                       aria-label="{{ option.name }}"
-                      {% if option_name_downcase contains 'pack' %}data-pack-option{% endif %}
                     >
                       {% for value in option.values %}
                         <option value="{{ value | escape }}"{% if value == selected_option_value %} selected{% endif %}>
@@ -284,606 +198,749 @@
               <p class="opc-single-variant-note">Single variant product (no option selection required).</p>
             {% endunless %}
 
-            <fieldset class="opc-pack-group">
-              <legend>{{ section.settings.offer_heading | default: 'Choose your pack' }}</legend>
+            {% if pack_option_index >= 0 and pack_option != blank and pack_option.values.size > 0 %}
+              <fieldset class="opc-pack-group" data-pack-group>
+                <legend>{{ section.settings.offer_heading | default: 'Choose your pack' }}</legend>
 
-              <div class="opc-pack-grid">
-                <label class="opc-pack-card{% if default_pack == '1' %} is-active{% endif %}" data-pack-card="1">
-                  <input
-                    type="radio"
-                    name="pack_{{ section.id }}"
-                    value="1"
-                    data-pack-radio
-                    {% if default_pack == '1' %}checked{% endif %}
-                  >
-                  <span class="opc-pack-card__title">{{ section.settings.pack_1_label | default: '1-Pack' }}</span>
-                  {% if section.settings.pack_1_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_1_sub }}</span>{% endif %}
-                  {% if section.settings.pack_1_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_1_savings }}</span>{% endif %}
-                </label>
-
-                <label class="opc-pack-card{% if default_pack == '2' %} is-active{% endif %}" data-pack-card="2">
-                  <input
-                    type="radio"
-                    name="pack_{{ section.id }}"
-                    value="2"
-                    data-pack-radio
-                    {% if default_pack == '2' %}checked{% endif %}
-                  >
-                  <span class="opc-pack-card__title">
-                    {{ section.settings.pack_2_label | default: '2-Pack' }}
-                    {% if section.settings.pack_2_badge != blank %}
-                      <span class="opc-inline-badge">{{ section.settings.pack_2_badge }}</span>
+                <div class="opc-pack-grid">
+                  {% for value in pack_option.values %}
+                    {% assign is_selected = false %}
+                    {% if current_variant.options[pack_option_index] == value %}
+                      {% assign is_selected = true %}
                     {% endif %}
-                  </span>
-                  {% if section.settings.pack_2_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_2_sub }}</span>{% endif %}
-                  {% if section.settings.pack_2_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_2_savings }}</span>{% endif %}
-                </label>
 
-                <label class="opc-pack-card{% if default_pack == '4' %} is-active{% endif %}" data-pack-card="4">
-                  <input
-                    type="radio"
-                    name="pack_{{ section.id }}"
-                    value="4"
-                    data-pack-radio
-                    {% if default_pack == '4' %}checked{% endif %}
-                  >
-                  <span class="opc-pack-card__title">{{ section.settings.pack_4_label | default: '4-Pack' }}</span>
-                  {% if section.settings.pack_4_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_4_sub }}</span>{% endif %}
-                  {% if section.settings.pack_4_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_4_savings }}</span>{% endif %}
-                </label>
-              </div>
-            </fieldset>
+                    {% assign label_text = value %}
+                    {% assign sub_text = blank %}
+                    {% assign meta_text = blank %}
+                    {% assign badge_text = blank %}
+
+                    {% case forloop.index %}
+                      {% when 1 %}
+                        {% assign label_text = section.settings.pack_1_label | default: value %}
+                        {% assign sub_text = section.settings.pack_1_sub %}
+                        {% assign meta_text = section.settings.pack_1_savings %}
+                      {% when 2 %}
+                        {% assign label_text = section.settings.pack_2_label | default: value %}
+                        {% assign sub_text = section.settings.pack_2_sub %}
+                        {% assign meta_text = section.settings.pack_2_savings %}
+                        {% assign badge_text = section.settings.pack_2_badge %}
+                      {% when 3 %}
+                        {% assign label_text = section.settings.pack_4_label | default: value %}
+                        {% assign sub_text = section.settings.pack_4_sub %}
+                        {% assign meta_text = section.settings.pack_4_savings %}
+                    {% endcase %}
+
+                    <label class="opc-pack-card{% if is_selected %} is-active{% endif %}" data-pack-card data-pack-value="{{ value | escape }}">
+                      <input
+                        type="radio"
+                        name="pack_{{ section.id }}"
+                        value="{{ value | escape }}"
+                        data-pack-radio
+                        {% if is_selected %}checked{% endif %}
+                      >
+                      <span class="opc-pack-card__title">
+                        {{ label_text }}
+                        {% if badge_text != blank %}
+                          <span class="opc-inline-badge">{{ badge_text }}</span>
+                        {% endif %}
+                      </span>
+                      {% if sub_text != blank %}<span class="opc-pack-card__sub">{{ sub_text }}</span>{% endif %}
+                      {% if meta_text != blank %}<span class="opc-pack-card__meta">{{ meta_text }}</span>{% endif %}
+                    </label>
+                  {% endfor %}
+                </div>
+              </fieldset>
+            {% else %}
+              <p class="opc-single-variant-note">
+                Pack-size variant option not found. Set <strong>Pack option name</strong> in section settings (example: Pack Size).
+              </p>
+            {% endif %}
 
             <button
               type="submit"
               class="opc-btn opc-btn--primary"
               data-atc-btn
-              data-default-text="{{ section.settings.atc_text | default: 'Add selected pack to cart' | escape }}"
-              data-soldout-text="{{ section.settings.sold_out_text | default: 'Sold out' | escape }}"
+              data-default-text="{{ section.settings.primary_cta_text | default: 'Add to cart' }}"
+              data-soldout-text="{{ section.settings.soldout_text | default: 'Sold out' }}"
               {% unless current_variant.available %}disabled{% endunless %}
             >
               {% if current_variant.available %}
-                {{ section.settings.atc_text | default: 'Add selected pack to cart' }}
+                {{ section.settings.primary_cta_text | default: 'Add to cart' }}
               {% else %}
-                {{ section.settings.sold_out_text | default: 'Sold out' }}
+                {{ section.settings.soldout_text | default: 'Sold out' }}
               {% endif %}
             </button>
 
-            <div class="opc-trust-lines">
-              {% if section.settings.trust_line_1 != blank %}<p>{{ section.settings.trust_line_1 }}</p>{% endif %}
-              {% if section.settings.trust_line_2 != blank %}<p>{{ section.settings.trust_line_2 }}</p>{% endif %}
-              {% if section.settings.trust_line_3 != blank %}<p>{{ section.settings.trust_line_3 }}</p>{% endif %}
-            </div>
-          {% endform %}
-        </div>
-      </section>
+            <p class="opc-microcopy">
+              {{ section.settings.trust_microcopy | default: 'Secure checkout. Clear shipping times. Easy returns.' }}
+            </p>
+          </form>
 
-      <!-- 3) PAIN -> SOLUTION BRIDGE -->
-      <section class="opc-block">
-        <div class="opc-block__head">
-          <h2>{{ section.settings.bridge_heading | default: 'Small gap, constant annoyance.' }}</h2>
-          {% if section.settings.bridge_body != blank %}
-            <p>{{ section.settings.bridge_body }}</p>
-          {% endif %}
-        </div>
-        <div class="opc-bridge-points">
-          {% if section.settings.bridge_point_1 != blank %}<div class="opc-soft-card">{{ section.settings.bridge_point_1 }}</div>{% endif %}
-          {% if section.settings.bridge_point_2 != blank %}<div class="opc-soft-card">{{ section.settings.bridge_point_2 }}</div>{% endif %}
-          {% if section.settings.bridge_point_3 != blank %}<div class="opc-soft-card">{{ section.settings.bridge_point_3 }}</div>{% endif %}
-        </div>
-      </section>
-
-      <!-- 4) BENEFIT BULLETS -->
-      <section class="opc-block">
-        <div class="opc-block__head">
-          <h2>{{ section.settings.benefits_heading | default: 'Why people buy this first (and keep it)' }}</h2>
-        </div>
-        <ul class="opc-benefits">
-          {% if section.settings.benefit_1 != blank %}<li>{{ section.settings.benefit_1 }}</li>{% endif %}
-          {% if section.settings.benefit_2 != blank %}<li>{{ section.settings.benefit_2 }}</li>{% endif %}
-          {% if section.settings.benefit_3 != blank %}<li>{{ section.settings.benefit_3 }}</li>{% endif %}
-          {% if section.settings.benefit_4 != blank %}<li>{{ section.settings.benefit_4 }}</li>{% endif %}
-          {% if section.settings.benefit_5 != blank %}<li>{{ section.settings.benefit_5 }}</li>{% endif %}
-          {% if section.settings.benefit_6 != blank %}<li>{{ section.settings.benefit_6 }}</li>{% endif %}
-        </ul>
-      </section>
-
-      <!-- 5) UGC / TIKTOK PROOF -->
-      {% if has_ugc %}
-        <section class="opc-block" id="opc-proof-{{ section.id }}">
-          <div class="opc-block__head">
-            <h2>{{ section.settings.ugc_heading | default: 'Real customer-style clips' }}</h2>
-            {% if section.settings.ugc_subhead != blank %}
-              <p>{{ section.settings.ugc_subhead }}</p>
-            {% endif %}
-          </div>
-
-          <div class="opc-ugc-grid">
-            {% for i in (1..4) %}
-              {% assign k_video = 'ugc_video_' | append: i %}
-              {% assign k_image = 'ugc_image_' | append: i %}
-              {% assign k_link = 'ugc_link_' | append: i %}
-              {% assign k_caption = 'ugc_caption_' | append: i %}
-              {% render 'ugc-video-proof-inline',
-                index: i,
-                video: section.settings[k_video],
-                image: section.settings[k_image],
-                link: section.settings[k_link],
-                caption: section.settings[k_caption]
-              %}
-            {% endfor %}
-          </div>
-        </section>
-      {% endif %}
-
-      <!-- 6) FIT CONFIDENCE -->
-      <section class="opc-block opc-fit" id="opc-fit-{{ section.id }}">
-        <div class="opc-fit__media">
-          {% if section.settings.fit_image != blank %}
-            {{
-              section.settings.fit_image
-              | image_url: width: 1200
-              | image_tag:
-                loading: 'lazy',
-                widths: '420, 640, 900, 1200',
-                sizes: '(min-width: 990px) 45vw, 100vw',
-                alt: 'Fit guidance'
-            }}
-          {% else %}
-            <div class="opc-soft-card">Add a fit reference image (seat + console gap) to reduce mismatch returns.</div>
-          {% endif %}
-        </div>
-        <div class="opc-fit__content">
-          <h2>{{ section.settings.fit_heading | default: 'Will this fit my car?' }}</h2>
-          {% if section.settings.fit_body != blank %}<p>{{ section.settings.fit_body }}</p>{% endif %}
-
-          <div class="opc-fit-list">
-            {% if section.settings.fit_dimensions != blank %}
-              <div class="opc-soft-card">
-                <h3>Dimensional guidance</h3>
-                <p>{{ section.settings.fit_dimensions | newline_to_br }}</p>
-              </div>
-            {% endif %}
-            {% if section.settings.fit_compatibility != blank %}
-              <div class="opc-soft-card">
-                <h3>Compatibility notes</h3>
-                <p>{{ section.settings.fit_compatibility | newline_to_br }}</p>
-              </div>
-            {% endif %}
-            {% if section.settings.fit_exclusions != blank %}
-              <div class="opc-soft-card">
-                <h3>Known exclusions</h3>
-                <p>{{ section.settings.fit_exclusions | newline_to_br }}</p>
-              </div>
-            {% endif %}
-          </div>
-
-          {% if section.settings.fit_reassurance != blank %}
-            <p class="opc-fit-reassurance">{{ section.settings.fit_reassurance }}</p>
-          {% endif %}
-        </div>
-      </section>
-
-      <!-- 7) WHAT'S INCLUDED -->
-      <section class="opc-block">
-        <div class="opc-block__head">
-          <h2>{{ section.settings.included_heading | default: "What's included" }}</h2>
-          {% if section.settings.included_intro != blank %}<p>{{ section.settings.included_intro }}</p>{% endif %}
-        </div>
-
-        <ul class="opc-included-list">
-          {% if section.settings.included_item_1 != blank %}<li>{{ section.settings.included_item_1 }}</li>{% endif %}
-          {% if section.settings.included_item_2 != blank %}<li>{{ section.settings.included_item_2 }}</li>{% endif %}
-          {% if section.settings.included_item_3 != blank %}<li>{{ section.settings.included_item_3 }}</li>{% endif %}
-          {% if section.settings.included_item_4 != blank %}<li>{{ section.settings.included_item_4 }}</li>{% endif %}
-          {% if section.settings.included_item_5 != blank %}<li>{{ section.settings.included_item_5 }}</li>{% endif %}
-        </ul>
-      </section>
-
-      <!-- 8) SHIPPING / RETURNS / GUARANTEE -->
-      <section class="opc-block">
-        <div class="opc-block__head">
-          <h2>{{ section.settings.shipping_heading | default: 'Shipping, returns, and support' }}</h2>
-        </div>
-
-        <div class="opc-reassurance-grid">
-          <article class="opc-soft-card">
-            <h3>Shipping</h3>
-            <p>{{ section.settings.shipping_text | newline_to_br }}</p>
-          </article>
-          <article class="opc-soft-card">
-            <h3>Returns</h3>
-            <p>{{ section.settings.returns_text | newline_to_br }}</p>
-          </article>
-          <article class="opc-soft-card">
-            <h3>Support</h3>
-            <p>{{ section.settings.support_text | newline_to_br }}</p>
-          </article>
-        </div>
-
-        {% if section.settings.guarantee_text != blank %}
-          <p class="opc-guarantee">{{ section.settings.guarantee_text }}</p>
-        {% endif %}
-      </section>
-
-      <!-- 9) FAQ -->
-      <section class="opc-block">
-        <div class="opc-block__head">
-          <h2>{{ section.settings.faq_heading | default: 'Frequently asked questions' }}</h2>
-        </div>
-
-        <div class="opc-faq-list">
-          {% if section.blocks.size > 0 %}
-            {% for block in section.blocks %}
-              {% if block.type == 'faq' %}
-                <details class="opc-faq-item" {{ block.shopify_attributes }}>
-                  <summary>{{ block.settings.q }}</summary>
-                  <div class="opc-faq-answer">{{ block.settings.a }}</div>
-                </details>
-              {% endif %}
-            {% endfor %}
-          {% else %}
-            <details class="opc-faq-item">
-              <summary>Will this interfere with my seatbelt?</summary>
-              <div class="opc-faq-answer">It’s designed to sit beside the console gap, not over the buckle. Confirm your buckle placement with the fit guidance above before ordering.</div>
-            </details>
-            <details class="opc-faq-item">
-              <summary>How long does install take?</summary>
-              <div class="opc-faq-answer">Usually under a minute per seat: slide into the gap and adjust positioning so movement stays natural.</div>
-            </details>
-            <details class="opc-faq-item">
-              <summary>Is this a permanent install?</summary>
-              <div class="opc-faq-answer">No. It’s removable and can be repositioned as needed.</div>
-            </details>
-          {% endif %}
-        </div>
-      </section>
-    </div>
-
-    <!-- 10) STICKY MOBILE CTA -->
-    <div class="opc-sticky" data-sticky-bar aria-hidden="true">
-      <div class="opc-sticky__inner">
-        <div class="opc-sticky__price-wrap">
-          <span class="opc-sticky__price" data-sticky-price>{{ current_variant.price | times: pack_multiplier | money }}</span>
-          {% if section.settings.sticky_trust_text != blank %}
-            <span class="opc-sticky__trust">{{ section.settings.sticky_trust_text }}</span>
-          {% endif %}
-        </div>
-
-        <div class="opc-sticky__controls">
-          <label class="opc-sr-only" for="opc-sticky-pack-{{ section.id }}">Pack quantity</label>
-          <select id="opc-sticky-pack-{{ section.id }}" class="opc-sticky__pack" data-sticky-pack>
-            <option value="1" {% if default_pack == '1' %}selected{% endif %}>{{ section.settings.pack_1_label | default: '1-Pack' }}</option>
-            <option value="2" {% if default_pack == '2' %}selected{% endif %}>{{ section.settings.pack_2_label | default: '2-Pack' }}</option>
-            <option value="4" {% if default_pack == '4' %}selected{% endif %}>{{ section.settings.pack_4_label | default: '4-Pack' }}</option>
-          </select>
-
-          <button
-            type="button"
-            class="opc-btn opc-btn--primary opc-sticky__btn"
-            data-sticky-submit
-            data-default-text="{{ section.settings.sticky_cta_text | default: 'Add to cart' | escape }}"
-            data-soldout-text="{{ section.settings.sold_out_text | default: 'Sold out' | escape }}"
-          >
-            {{ section.settings.sticky_cta_text | default: 'Add to cart' }}
-          </button>
+          <ul class="opc-trust-list" role="list">
+            {% if section.settings.trust_line_1 != blank %}<li>{{ section.settings.trust_line_1 }}</li>{% endif %}
+            {% if section.settings.trust_line_2 != blank %}<li>{{ section.settings.trust_line_2 }}</li>{% endif %}
+            {% if section.settings.trust_line_3 != blank %}<li>{{ section.settings.trust_line_3 }}</li>{% endif %}
+          </ul>
         </div>
       </div>
     </div>
 
-    <script type="application/json" data-product-json>
-      {{ featured_product | json }}
-    </script>
+    {%- comment -%}
+      3) Pain -> solution bridge
+    {%- endcomment -%}
+    <section class="opc-block page-width opc-bridge" aria-labelledby="opc-bridge-title-{{ section.id }}">
+      <h2 id="opc-bridge-title-{{ section.id }}">{{ section.settings.bridge_heading | default: 'A simple fix for the everyday gap problem' }}</h2>
+      <p>{{ section.settings.bridge_body | default: 'Loose items slip into seat gaps, distract drivers, and create daily annoyance. This gap filler sits between your seat and console to reduce drop-through clutter and keep essentials within reach.' }}</p>
+      <div class="opc-what-whatnot">
+        <div>
+          <h3>{{ section.settings.what_is_title | default: 'What it is' }}</h3>
+          <p>{{ section.settings.what_is_body | default: 'A physical insert that helps block common seat-console gaps.' }}</p>
+        </div>
+        <div>
+          <h3>{{ section.settings.what_not_title | default: 'What it is not' }}</h3>
+          <p>{{ section.settings.what_not_body | default: 'Not a universal guarantee for every interior shape. Always check dimensions before purchase.' }}</p>
+        </div>
+      </div>
+    </section>
+
+    {%- comment -%}
+      4) Benefit bullets
+    {%- endcomment -%}
+    <section class="opc-block page-width opc-benefits" aria-labelledby="opc-benefits-title-{{ section.id }}">
+      <h2 id="opc-benefits-title-{{ section.id }}">{{ section.settings.benefits_heading | default: 'Why customers choose this' }}</h2>
+      <ul role="list" class="opc-benefit-list">
+        {% if section.settings.benefit_1 != blank %}<li>{{ section.settings.benefit_1 }}</li>{% endif %}
+        {% if section.settings.benefit_2 != blank %}<li>{{ section.settings.benefit_2 }}</li>{% endif %}
+        {% if section.settings.benefit_3 != blank %}<li>{{ section.settings.benefit_3 }}</li>{% endif %}
+        {% if section.settings.benefit_4 != blank %}<li>{{ section.settings.benefit_4 }}</li>{% endif %}
+      </ul>
+    </section>
+
+    {%- comment -%}
+      5) UGC / TikTok proof
+    {%- endcomment -%}
+    {% assign ugc_count = 0 %}
+    {% for i in (1..4) %}
+      {% assign video_key = 'ugc_video_' | append: i %}
+      {% assign image_key = 'ugc_image_' | append: i %}
+      {% assign link_key = 'ugc_link_' | append: i %}
+      {% assign cap_key = 'ugc_caption_' | append: i %}
+
+      {% assign ugc_video = section.settings[video_key] %}
+      {% assign ugc_image = section.settings[image_key] %}
+      {% assign ugc_link = section.settings[link_key] %}
+      {% assign ugc_caption = section.settings[cap_key] %}
+
+      {% if ugc_video != blank or ugc_image != blank or ugc_link != blank or ugc_caption != blank %}
+        {% assign ugc_count = ugc_count | plus: 1 %}
+      {% endif %}
+    {% endfor %}
+
+    {% if ugc_count > 0 %}
+      <section class="opc-block page-width opc-ugc" aria-labelledby="opc-ugc-title-{{ section.id }}">
+        <div class="opc-ugc__head">
+          <h2 id="opc-ugc-title-{{ section.id }}">{{ section.settings.ugc_heading | default: 'Proof in real setups' }}</h2>
+          {% if section.settings.ugc_subheading != blank %}
+            <p>{{ section.settings.ugc_subheading }}</p>
+          {% endif %}
+        </div>
+
+        <div class="opc-ugc-grid">
+          {% for i in (1..4) %}
+            {% assign video_key = 'ugc_video_' | append: i %}
+            {% assign image_key = 'ugc_image_' | append: i %}
+            {% assign link_key = 'ugc_link_' | append: i %}
+            {% assign cap_key = 'ugc_caption_' | append: i %}
+
+            {% assign ugc_video = section.settings[video_key] %}
+            {% assign ugc_image = section.settings[image_key] %}
+            {% assign ugc_link = section.settings[link_key] %}
+            {% assign ugc_caption = section.settings[cap_key] %}
+
+            {% if ugc_video != blank or ugc_image != blank or ugc_link != blank or ugc_caption != blank %}
+              <article class="opc-ugc-card">
+                {% if ugc_link != blank %}
+                  <a class="opc-ugc-media" href="{{ ugc_link }}" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open source video link {{ i }}">
+                {% else %}
+                  <div class="opc-ugc-media">
+                {% endif %}
+
+                  {% if ugc_video != blank and ugc_video.sources.size > 0 %}
+                    <video
+                      playsinline
+                      controls
+                      preload="metadata"
+                      poster="{% if ugc_video.preview_image %}{{ ugc_video.preview_image | image_url: width: 800 }}{% endif %}"
+                    >
+                      {% for source in ugc_video.sources %}
+                        <source src="{{ source.url }}" type="{{ source.mime_type }}">
+                      {% endfor %}
+                    </video>
+                  {% elsif ugc_image != blank %}
+                    {{ ugc_image | image_url: width: 900 | image_tag: loading: 'lazy', widths: '320,480,640,900', alt: ugc_caption | default: 'Customer proof image' | escape }}
+                  {% else %}
+                    <div class="opc-ugc-placeholder">UGC slot {{ i }}</div>
+                  {% endif %}
+
+                {% if ugc_link != blank %}
+                  </a>
+                {% else %}
+                  </div>
+                {% endif %}
+
+                {% if ugc_caption != blank %}
+                  <p class="opc-ugc-caption">{{ ugc_caption }}</p>
+                {% endif %}
+              </article>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {%- comment -%}
+      6) Fit confidence
+    {%- endcomment -%}
+    <section class="opc-block page-width opc-fit" aria-labelledby="opc-fit-title-{{ section.id }}">
+      <h2 id="opc-fit-title-{{ section.id }}">{{ section.settings.fit_heading | default: 'Will this fit my car?' }}</h2>
+
+      <div class="opc-fit-grid">
+        <div class="opc-fit-card">
+          <h3>{{ section.settings.fit_dim_title | default: 'Dimensional guidance' }}</h3>
+          <p>{{ section.settings.fit_dim_body | default: 'Check your seat-to-console gap and compare with product dimensions before ordering.' }}</p>
+        </div>
+
+        <div class="opc-fit-card">
+          <h3>{{ section.settings.fit_compat_title | default: 'Compatibility notes' }}</h3>
+          <p>{{ section.settings.fit_compat_body | default: 'Works best when the gap is consistent from top to bottom and seat movement does not pinch the insert.' }}</p>
+        </div>
+
+        <div class="opc-fit-card">
+          <h3>{{ section.settings.fit_exclusion_title | default: 'Common exclusions' }}</h3>
+          <p>{{ section.settings.fit_exclusion_body | default: 'May not fit oversized luxury gaps, unusual console shapes, or vehicles with very tight seat side bolsters.' }}</p>
+        </div>
+      </div>
+
+      {% if section.settings.fit_reassurance != blank %}
+        <p class="opc-fit-note">{{ section.settings.fit_reassurance }}</p>
+      {% endif %}
+    </section>
+
+    {%- comment -%}
+      7) Offer architecture
+    {%- endcomment -%}
+    <section class="opc-block page-width opc-offers" aria-labelledby="opc-offers-title-{{ section.id }}">
+      <h2 id="opc-offers-title-{{ section.id }}">{{ section.settings.offer_heading | default: 'Choose your pack' }}</h2>
+      {% if section.settings.offer_subheading != blank %}
+        <p class="opc-offers-sub">{{ section.settings.offer_subheading }}</p>
+      {% endif %}
+
+      {% if pack_option_index >= 0 and pack_option != blank and pack_option.values.size > 0 %}
+        <div class="opc-offer-grid">
+          {% for value in pack_option.values %}
+            {% assign is_selected = false %}
+            {% if current_variant.options[pack_option_index] == value %}
+              {% assign is_selected = true %}
+            {% endif %}
+
+            {% assign label_text = value %}
+            {% assign sub_text = blank %}
+            {% assign meta_text = blank %}
+            {% assign badge_text = blank %}
+
+            {% case forloop.index %}
+              {% when 1 %}
+                {% assign label_text = section.settings.pack_1_label | default: value %}
+                {% assign sub_text = section.settings.pack_1_sub %}
+                {% assign meta_text = section.settings.pack_1_savings %}
+              {% when 2 %}
+                {% assign label_text = section.settings.pack_2_label | default: value %}
+                {% assign sub_text = section.settings.pack_2_sub %}
+                {% assign meta_text = section.settings.pack_2_savings %}
+                {% assign badge_text = section.settings.pack_2_badge %}
+              {% when 3 %}
+                {% assign label_text = section.settings.pack_4_label | default: value %}
+                {% assign sub_text = section.settings.pack_4_sub %}
+                {% assign meta_text = section.settings.pack_4_savings %}
+            {% endcase %}
+
+            {% assign offer_variant = blank %}
+            {% for v in featured_product.variants %}
+              {% assign is_match = true %}
+              {% for opt in v.options %}
+                {% assign idx = forloop.index0 %}
+                {% if idx == pack_option_index %}
+                  {% if opt != value %}
+                    {% assign is_match = false %}
+                  {% endif %}
+                {% else %}
+                  {% if opt != current_variant.options[idx] %}
+                    {% assign is_match = false %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {% if is_match %}
+                {% assign offer_variant = v %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+
+            {% if offer_variant == blank %}
+              {% for v in featured_product.variants %}
+                {% if v.options[pack_option_index] == value %}
+                  {% assign offer_variant = v %}
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+
+            <article
+              class="opc-offer-card{% if forloop.index == 2 %} is-featured{% endif %}{% if is_selected %} is-active{% endif %}{% if offer_variant != blank and offer_variant.available == false %} is-unavailable{% endif %}"
+              data-offer-card
+              data-pack-value="{{ value | escape }}"
+            >
+              {% if badge_text != blank %}
+                <span class="opc-offer-badge">{{ badge_text }}</span>
+              {% endif %}
+
+              <h3>{{ label_text }}</h3>
+              {% if sub_text != blank %}<p>{{ sub_text }}</p>{% endif %}
+
+              <div class="opc-offer-pricing">
+                <span class="opc-offer-total" data-offer-price>
+                  {% if offer_variant != blank %}{{ offer_variant.price | money }}{% else %}—{% endif %}
+                </span>
+                <span class="opc-offer-compare{% if offer_variant == blank or offer_variant.compare_at_price <= offer_variant.price %} is-hidden{% endif %}" data-offer-compare>
+                  {% if offer_variant != blank and offer_variant.compare_at_price > offer_variant.price %}
+                    {{ offer_variant.compare_at_price | money }}
+                  {% endif %}
+                </span>
+              </div>
+
+              {% if meta_text != blank %}
+                <div class="opc-offer-meta">{{ meta_text }}</div>
+              {% endif %}
+
+              <button
+                type="button"
+                class="opc-btn opc-btn--ghost"
+                data-pack-pick="{{ value | escape }}"
+                data-default-label="Select {{ label_text | escape }}"
+                {% if offer_variant != blank and offer_variant.available == false %}disabled{% endif %}
+              >
+                {% if offer_variant != blank and offer_variant.available == false %}
+                  Unavailable
+                {% else %}
+                  Select {{ label_text }}
+                {% endif %}
+              </button>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="opc-offer-note">
+          Configure a pack-size variant option (for example “Pack Size”) to enable offer cards.
+        </p>
+      {% endif %}
+    </section>
+
+    {%- comment -%}
+      8) What's included
+    {%- endcomment -%}
+    <section class="opc-block page-width opc-included" aria-labelledby="opc-included-title-{{ section.id }}">
+      <h2 id="opc-included-title-{{ section.id }}">{{ section.settings.included_heading | default: "What’s included" }}</h2>
+      <ul role="list">
+        {% if section.settings.included_1 != blank %}<li>{{ section.settings.included_1 }}</li>{% endif %}
+        {% if section.settings.included_2 != blank %}<li>{{ section.settings.included_2 }}</li>{% endif %}
+        {% if section.settings.included_3 != blank %}<li>{{ section.settings.included_3 }}</li>{% endif %}
+        {% if section.settings.included_4 != blank %}<li>{{ section.settings.included_4 }}</li>{% endif %}
+      </ul>
+    </section>
+
+    {%- comment -%}
+      9) Shipping / returns / guarantee reassurance
+    {%- endcomment -%}
+    <section class="opc-block page-width opc-policy" aria-labelledby="opc-policy-title-{{ section.id }}">
+      <h2 id="opc-policy-title-{{ section.id }}">{{ section.settings.policy_heading | default: 'Shipping, returns, and reassurance' }}</h2>
+      <div class="opc-policy-grid">
+        <article>
+          <h3>{{ section.settings.shipping_title | default: 'Shipping' }}</h3>
+          <p>{{ section.settings.shipping_body | default: 'Processing and shipping windows are shown at checkout. We keep timelines realistic and visible before purchase.' }}</p>
+        </article>
+        <article>
+          <h3>{{ section.settings.returns_title | default: 'Returns' }}</h3>
+          <p>{{ section.settings.returns_body | default: 'If your item arrives damaged or doesn’t match your order, contact support and we’ll make it right under our return policy.' }}</p>
+        </article>
+        <article>
+          <h3>{{ section.settings.guarantee_title | default: 'Order confidence' }}</h3>
+          <p>{{ section.settings.guarantee_body | default: 'Clear fit guidance, clear policy terms, and responsive support before and after your order.' }}</p>
+        </article>
+      </div>
+    </section>
+
+    {%- comment -%}
+      10) FAQ
+    {%- endcomment -%}
+    <section class="opc-block page-width opc-faq" aria-labelledby="opc-faq-title-{{ section.id }}">
+      <h2 id="opc-faq-title-{{ section.id }}">{{ section.settings.faq_heading | default: 'Frequently asked questions' }}</h2>
+      <div class="opc-faq-list">
+        {% if section.settings.faq_q1 != blank and section.settings.faq_a1 != blank %}
+          <details>
+            <summary>{{ section.settings.faq_q1 }}</summary>
+            <div>{{ section.settings.faq_a1 }}</div>
+          </details>
+        {% endif %}
+        {% if section.settings.faq_q2 != blank and section.settings.faq_a2 != blank %}
+          <details>
+            <summary>{{ section.settings.faq_q2 }}</summary>
+            <div>{{ section.settings.faq_a2 }}</div>
+          </details>
+        {% endif %}
+        {% if section.settings.faq_q3 != blank and section.settings.faq_a3 != blank %}
+          <details>
+            <summary>{{ section.settings.faq_q3 }}</summary>
+            <div>{{ section.settings.faq_a3 }}</div>
+          </details>
+        {% endif %}
+        {% if section.settings.faq_q4 != blank and section.settings.faq_a4 != blank %}
+          <details>
+            <summary>{{ section.settings.faq_q4 }}</summary>
+            <div>{{ section.settings.faq_a4 }}</div>
+          </details>
+        {% endif %}
+        {% if section.settings.faq_q5 != blank and section.settings.faq_a5 != blank %}
+          <details>
+            <summary>{{ section.settings.faq_q5 }}</summary>
+            <div>{{ section.settings.faq_a5 }}</div>
+          </details>
+        {% endif %}
+      </div>
+    </section>
+
+    {%- comment -%}
+      11) Sticky mobile CTA bar
+    {%- endcomment -%}
+    <div class="opc-sticky" data-sticky-bar aria-hidden="true">
+      <div class="opc-sticky__inner">
+        <div class="opc-sticky__price" data-sticky-price>{{ current_variant.price | money }}</div>
+
+        <label class="opc-sr-only" for="opc-sticky-pack-{{ section.id }}">Pack size</label>
+        <select
+          id="opc-sticky-pack-{{ section.id }}"
+          class="opc-sticky__pack"
+          data-sticky-pack
+          {% unless pack_option_index >= 0 and pack_option != blank and pack_option.values.size > 0 %}disabled hidden{% endunless %}
+        >
+          {% if pack_option_index >= 0 and pack_option != blank and pack_option.values.size > 0 %}
+            {% for value in pack_option.values %}
+              {% assign is_selected = false %}
+              {% if current_variant.options[pack_option_index] == value %}
+                {% assign is_selected = true %}
+              {% endif %}
+              <option value="{{ value | escape }}" {% if is_selected %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          {% else %}
+            <option value="">Default</option>
+          {% endif %}
+        </select>
+
+        <button
+          type="button"
+          class="opc-btn opc-btn--primary opc-sticky__btn"
+          data-sticky-submit
+          data-default-text="{{ section.settings.sticky_cta_text | default: section.settings.primary_cta_text | default: 'Add to cart' }}"
+          data-soldout-text="{{ section.settings.soldout_text | default: 'Sold out' }}"
+          {% unless current_variant.available %}disabled{% endunless %}
+        >
+          {% if current_variant.available %}
+            {{ section.settings.sticky_cta_text | default: section.settings.primary_cta_text | default: 'Add to cart' }}
+          {% else %}
+            {{ section.settings.soldout_text | default: 'Sold out' }}
+          {% endif %}
+        </button>
+      </div>
+    </div>
   {% endif %}
 </section>
 
 {% schema %}
 {
   "name": "One Page Car Seat",
-  "tag": "section",
-  "class": "section-one-page-carseat",
   "settings": [
     {
       "type": "product",
       "id": "product",
       "label": "Product source"
     },
-
     {
       "type": "header",
-      "content": "1) Announcement / trust strip"
+      "content": "Announcement strip"
     },
     {
       "type": "checkbox",
-      "id": "announcement_enable",
+      "id": "show_announcement",
       "label": "Show announcement strip",
       "default": true
     },
     {
       "type": "text",
+      "id": "announcement_chip",
+      "label": "Announcement chip",
+      "default": "Limited Offer"
+    },
+    {
+      "type": "text",
       "id": "announcement_text",
       "label": "Announcement text",
-      "default": "Fast dispatch + clear returns. No fake countdowns."
+      "default": "Fast checkout, clear shipping windows, and support if you need fit help."
     },
-    {
-      "type": "text",
-      "id": "announcement_chip_1",
-      "label": "Chip 1",
-      "default": "Ships in 24–48h"
-    },
-    {
-      "type": "text",
-      "id": "announcement_chip_2",
-      "label": "Chip 2",
-      "default": "30-day returns"
-    },
-    {
-      "type": "text",
-      "id": "announcement_chip_3",
-      "label": "Chip 3",
-      "default": "Secure checkout"
-    },
-
     {
       "type": "header",
-      "content": "2) Hero"
+      "content": "Hero copy"
     },
     {
       "type": "text",
-      "id": "hero_badge",
-      "label": "Hero badge",
-      "default": "Stop the drop"
+      "id": "hero_kicker",
+      "label": "Hero kicker",
+      "default": "Car Organization Essential"
     },
     {
       "type": "text",
-      "id": "hero_heading",
-      "label": "Hero headline",
-      "default": "Stop drops from disappearing between your seat and console."
+      "id": "hero_title",
+      "label": "Hero title",
+      "default": "Stop losing phones, cards, and keys in the seat gap."
     },
     {
       "type": "textarea",
-      "id": "hero_subhead",
-      "label": "Hero subhead",
-      "default": "A low-profile seat-gap filler that helps block everyday item drops and reduces distraction while driving."
-    },
-    {
-      "type": "image_picker",
-      "id": "hero_fallback_image",
-      "label": "Hero fallback image (used when product has no media)"
+      "id": "hero_subtitle",
+      "label": "Hero subtitle",
+      "default": "A simple insert designed to block common seat-console gaps and keep your essentials within reach."
     },
     {
       "type": "text",
-      "id": "price_context_chip",
-      "label": "Price context chip",
-      "default": "Bundle options available"
+      "id": "price_note",
+      "label": "Price note",
+      "default": "Price shown for selected pack size variant."
     },
     {
       "type": "text",
-      "id": "atc_text",
-      "label": "Primary add-to-cart button text",
-      "default": "Add selected pack to cart"
-    },
-    {
-      "type": "text",
-      "id": "sticky_cta_text",
-      "label": "Sticky mobile button text",
+      "id": "primary_cta_text",
+      "label": "Primary button text",
       "default": "Add to cart"
     },
     {
       "type": "text",
-      "id": "sold_out_text",
-      "label": "Sold-out button text",
+      "id": "sticky_cta_text",
+      "label": "Sticky button text",
+      "default": "Add to cart"
+    },
+    {
+      "type": "text",
+      "id": "soldout_text",
+      "label": "Sold out button text",
       "default": "Sold out"
     },
     {
       "type": "text",
+      "id": "trust_microcopy",
+      "label": "Hero trust microcopy",
+      "default": "Secure checkout. Clear shipping times. Easy returns."
+    },
+    {
+      "type": "text",
       "id": "trust_line_1",
-      "label": "Trust microcopy line 1",
-      "default": "Clear fit notes before purchase to reduce mismatch returns."
+      "label": "Trust line 1",
+      "default": "Fits many common seat-console layouts"
     },
     {
       "type": "text",
       "id": "trust_line_2",
-      "label": "Trust microcopy line 2",
-      "default": "Seatbelt path should remain unobstructed when positioned correctly."
+      "label": "Trust line 2",
+      "default": "No tools required for installation"
     },
     {
       "type": "text",
       "id": "trust_line_3",
-      "label": "Trust microcopy line 3",
-      "default": "Support replies in 1 business day."
+      "label": "Trust line 3",
+      "default": "Support available for fit questions"
     },
-
     {
       "type": "header",
-      "content": "3) Pain -> solution bridge"
+      "content": "Pain to solution bridge"
     },
     {
       "type": "text",
       "id": "bridge_heading",
-      "label": "Bridge heading",
-      "default": "Small gap, constant annoyance."
+      "label": "Section heading",
+      "default": "A simple fix for the everyday gap problem"
     },
     {
       "type": "textarea",
       "id": "bridge_body",
-      "label": "Bridge body",
-      "default": "Phones, keys, coins, and cards drop into the same hard-to-reach gap. This filler is designed to block that gap with a simple drop-in setup."
+      "label": "Section body",
+      "default": "Loose items slip into seat gaps, distract drivers, and create daily annoyance. This gap filler sits between your seat and console to reduce drop-through clutter and keep essentials within reach."
     },
     {
       "type": "text",
-      "id": "bridge_point_1",
-      "label": "Bridge point 1",
-      "default": "Blocks common drop zone near the console"
+      "id": "what_is_title",
+      "label": "\"What it is\" title",
+      "default": "What it is"
+    },
+    {
+      "type": "textarea",
+      "id": "what_is_body",
+      "label": "\"What it is\" text",
+      "default": "A physical insert that helps block common seat-console gaps."
     },
     {
       "type": "text",
-      "id": "bridge_point_2",
-      "label": "Bridge point 2",
-      "default": "Installs in under a minute per seat"
+      "id": "what_not_title",
+      "label": "\"What it is not\" title",
+      "default": "What it is not"
     },
     {
-      "type": "text",
-      "id": "bridge_point_3",
-      "label": "Bridge point 3",
-      "default": "Removable and repositionable"
+      "type": "textarea",
+      "id": "what_not_body",
+      "label": "\"What it is not\" text",
+      "default": "Not a universal guarantee for every interior shape. Always check dimensions before purchase."
     },
-
     {
       "type": "header",
-      "content": "4) Benefit bullets"
+      "content": "Benefit bullets"
     },
     {
       "type": "text",
       "id": "benefits_heading",
       "label": "Benefits heading",
-      "default": "Why people buy this first (and keep it)"
+      "default": "Why customers choose this"
     },
     {
       "type": "text",
       "id": "benefit_1",
       "label": "Benefit 1",
-      "default": "Reduces common item drops into seat-console gap."
+      "default": "Helps reduce item drop-through between seat and console"
     },
     {
       "type": "text",
       "id": "benefit_2",
       "label": "Benefit 2",
-      "default": "Low-profile shape keeps cabin look clean."
+      "default": "Installs in seconds without tools"
     },
     {
       "type": "text",
       "id": "benefit_3",
       "label": "Benefit 3",
-      "default": "No tools needed for setup."
+      "default": "Designed for daily use and easy wipe-down cleaning"
     },
     {
       "type": "text",
       "id": "benefit_4",
       "label": "Benefit 4",
-      "default": "Helps reduce mid-drive reach-and-search moments."
+      "default": "Pack options for one car or multiple seats"
     },
-    {
-      "type": "text",
-      "id": "benefit_5",
-      "label": "Benefit 5",
-      "default": "Durable material for daily use."
-    },
-    {
-      "type": "text",
-      "id": "benefit_6",
-      "label": "Benefit 6",
-      "default": "Easy to remove and clean."
-    },
-
     {
       "type": "header",
-      "content": "5) UGC / TikTok proof"
+      "content": "UGC proof gallery"
     },
     {
       "type": "text",
       "id": "ugc_heading",
       "label": "UGC heading",
-      "default": "Real customer-style clips"
+      "default": "Proof in real setups"
     },
     {
       "type": "textarea",
-      "id": "ugc_subhead",
-      "label": "UGC subhead",
-      "default": "Use approved uploads or source links only. Keep clips realistic and fit-focused."
+      "id": "ugc_subheading",
+      "label": "UGC subheading",
+      "default": "Customer-style videos and clips showing everyday fit and use."
     },
-
     {
       "type": "video",
       "id": "ugc_video_1",
-      "label": "UGC video 1 (uploaded)"
+      "label": "UGC video 1"
     },
     {
       "type": "image_picker",
       "id": "ugc_image_1",
-      "label": "UGC fallback image 1"
+      "label": "UGC image fallback 1"
     },
     {
       "type": "url",
       "id": "ugc_link_1",
-      "label": "UGC source link 1 (TikTok / source URL)"
+      "label": "UGC source link 1 (TikTok or source URL)"
     },
     {
       "type": "text",
       "id": "ugc_caption_1",
       "label": "UGC caption 1",
-      "default": "Quick install + fit check."
+      "default": "Quick install demo"
     },
-
     {
       "type": "video",
       "id": "ugc_video_2",
-      "label": "UGC video 2 (uploaded)"
+      "label": "UGC video 2"
     },
     {
       "type": "image_picker",
       "id": "ugc_image_2",
-      "label": "UGC fallback image 2"
+      "label": "UGC image fallback 2"
     },
     {
       "type": "url",
       "id": "ugc_link_2",
-      "label": "UGC source link 2 (TikTok / source URL)"
+      "label": "UGC source link 2 (TikTok or source URL)"
     },
     {
       "type": "text",
       "id": "ugc_caption_2",
       "label": "UGC caption 2",
-      "default": "Side-by-side before/after gap view."
+      "default": "Color and fit preview"
     },
-
     {
       "type": "video",
       "id": "ugc_video_3",
-      "label": "UGC video 3 (uploaded)"
+      "label": "UGC video 3"
     },
     {
       "type": "image_picker",
       "id": "ugc_image_3",
-      "label": "UGC fallback image 3"
+      "label": "UGC image fallback 3"
     },
     {
       "type": "url",
       "id": "ugc_link_3",
-      "label": "UGC source link 3 (TikTok / source URL)"
+      "label": "UGC source link 3 (TikTok or source URL)"
     },
     {
       "type": "text",
       "id": "ugc_caption_3",
       "label": "UGC caption 3",
-      "default": "Seatbelt clearance check."
+      "default": "In-car usage clip"
     },
-
     {
       "type": "video",
       "id": "ugc_video_4",
-      "label": "UGC video 4 (uploaded)"
+      "label": "UGC video 4"
     },
     {
       "type": "image_picker",
       "id": "ugc_image_4",
-      "label": "UGC fallback image 4"
+      "label": "UGC image fallback 4"
     },
     {
       "type": "url",
       "id": "ugc_link_4",
-      "label": "UGC source link 4 (TikTok / source URL)"
+      "label": "UGC source link 4 (TikTok or source URL)"
     },
     {
       "type": "text",
       "id": "ugc_caption_4",
       "label": "UGC caption 4",
-      "default": "Daily use close-up."
+      "default": "Pack comparison"
     },
-
     {
       "type": "header",
-      "content": "6) Fit confidence"
+      "content": "Fit confidence section"
     },
     {
       "type": "text",
@@ -892,44 +949,50 @@
       "default": "Will this fit my car?"
     },
     {
-      "type": "textarea",
-      "id": "fit_body",
-      "label": "Fit intro",
-      "default": "Please check your seat-console gap shape and buckle position before ordering. This helps prevent mismatch returns."
-    },
-    {
-      "type": "image_picker",
-      "id": "fit_image",
-      "label": "Fit image"
+      "type": "text",
+      "id": "fit_dim_title",
+      "label": "Dimension card title",
+      "default": "Dimensional guidance"
     },
     {
       "type": "textarea",
-      "id": "fit_dimensions",
-      "label": "Dimensional guidance",
-      "default": "Check product dimensions against your seat-console gap.\nConfirm depth and width where the filler will sit."
-    },
-    {
-      "type": "textarea",
-      "id": "fit_compatibility",
-      "label": "Compatibility notes",
-      "default": "Works best with standard center-console seat gaps.\nBest results when gap geometry is consistent from front to back."
-    },
-    {
-      "type": "textarea",
-      "id": "fit_exclusions",
-      "label": "Known exclusions",
-      "default": "May be unsuitable for unusually narrow/wide gaps or irregular console shapes.\nDo not force fit if buckle or seat movement is obstructed."
+      "id": "fit_dim_body",
+      "label": "Dimension card body",
+      "default": "Check your seat-to-console gap and compare with product dimensions before ordering."
     },
     {
       "type": "text",
+      "id": "fit_compat_title",
+      "label": "Compatibility card title",
+      "default": "Compatibility notes"
+    },
+    {
+      "type": "textarea",
+      "id": "fit_compat_body",
+      "label": "Compatibility card body",
+      "default": "Works best when the gap is consistent from top to bottom and seat movement does not pinch the insert."
+    },
+    {
+      "type": "text",
+      "id": "fit_exclusion_title",
+      "label": "Exclusions card title",
+      "default": "Common exclusions"
+    },
+    {
+      "type": "textarea",
+      "id": "fit_exclusion_body",
+      "label": "Exclusions card body",
+      "default": "May not fit oversized luxury gaps, unusual console shapes, or vehicles with very tight seat side bolsters."
+    },
+    {
+      "type": "textarea",
       "id": "fit_reassurance",
       "label": "Fit reassurance line",
-      "default": "Still unsure? Compare measurements first, then order the smallest practical pack."
+      "default": "If you are unsure, contact support before ordering and share your vehicle details."
     },
-
     {
       "type": "header",
-      "content": "7) Offer architecture (1 / 2 / 4)"
+      "content": "Offer architecture"
     },
     {
       "type": "text",
@@ -939,176 +1002,159 @@
     },
     {
       "type": "textarea",
-      "id": "offer_subhead",
-      "label": "Offer subhead",
-      "default": "Simple quantity-based packs. No confusing option trees."
+      "id": "offer_subheading",
+      "label": "Offer subheading",
+      "default": "Pick the pack size that matches your setup."
     },
     {
-      "type": "select",
-      "id": "default_pack",
-      "label": "Default selected pack",
-      "default": "2",
-      "options": [
-        { "value": "1", "label": "1-Pack" },
-        { "value": "2", "label": "2-Pack" },
-        { "value": "4", "label": "4-Pack" }
-      ]
+      "type": "text",
+      "id": "pack_option_name",
+      "label": "Pack option name (exact or close match)",
+      "default": "Pack Size"
     },
     {
       "type": "text",
       "id": "pack_1_label",
-      "label": "1-Pack label",
+      "label": "Pack 1 label",
       "default": "1-Pack"
     },
     {
       "type": "text",
       "id": "pack_1_sub",
-      "label": "1-Pack subtitle",
-      "default": "Good for one car setup"
+      "label": "Pack 1 subtext",
+      "default": "Single seat setup"
     },
     {
       "type": "text",
       "id": "pack_1_savings",
-      "label": "1-Pack meta text",
-      "default": "Starter option"
+      "label": "Pack 1 meta text",
+      "default": "Great for trying first"
     },
-
     {
       "type": "text",
       "id": "pack_2_label",
-      "label": "2-Pack label",
+      "label": "Pack 2 label",
       "default": "2-Pack"
     },
     {
       "type": "text",
       "id": "pack_2_sub",
-      "label": "2-Pack subtitle",
-      "default": "Best for two front seats / two vehicles"
-    },
-    {
-      "type": "text",
-      "id": "pack_2_badge",
-      "label": "2-Pack badge",
-      "default": "Most Popular"
+      "label": "Pack 2 subtext",
+      "default": "Most popular"
     },
     {
       "type": "text",
       "id": "pack_2_savings",
-      "label": "2-Pack meta text",
-      "default": "Best value"
+      "label": "Pack 2 meta text",
+      "default": "Better value per piece"
     },
-
+    {
+      "type": "text",
+      "id": "pack_2_badge",
+      "label": "Pack 2 badge",
+      "default": "Best Value"
+    },
     {
       "type": "text",
       "id": "pack_4_label",
-      "label": "4-Pack label",
+      "label": "Pack 4 label",
       "default": "4-Pack"
     },
     {
       "type": "text",
       "id": "pack_4_sub",
-      "label": "4-Pack subtitle",
-      "default": "For family cars / backup stock"
+      "label": "Pack 4 subtext",
+      "default": "Multiple vehicles / seats"
     },
     {
       "type": "text",
       "id": "pack_4_savings",
-      "label": "4-Pack meta text",
-      "default": "Bulk convenience"
+      "label": "Pack 4 meta text",
+      "default": "Highest total savings"
     },
-
-    {
-      "type": "text",
-      "id": "offer_note",
-      "label": "Offer note",
-      "default": "Expectation note: 1-Pack equals one unit quantity of this product in cart. Confirm your exact product contents and seat count before ordering."
-    },
-
     {
       "type": "header",
-      "content": "8) What's included"
+      "content": "What's included"
     },
     {
       "type": "text",
       "id": "included_heading",
       "label": "Included heading",
-      "default": "What's included"
-    },
-    {
-      "type": "textarea",
-      "id": "included_intro",
-      "label": "Included intro",
-      "default": "Package contents depend on your selected product and quantity. Confirm this section matches your product listing details."
+      "default": "What’s included"
     },
     {
       "type": "text",
-      "id": "included_item_1",
-      "label": "Included item 1",
-      "default": "Car seat gap filler unit(s) based on selected quantity"
+      "id": "included_1",
+      "label": "Included line 1",
+      "default": "Selected pack size of car seat gap fillers"
     },
     {
       "type": "text",
-      "id": "included_item_2",
-      "label": "Included item 2",
+      "id": "included_2",
+      "label": "Included line 2",
+      "default": "Color based on selected variant"
+    },
+    {
+      "type": "text",
+      "id": "included_3",
+      "label": "Included line 3",
       "default": "Basic usage guidance"
     },
     {
       "type": "text",
-      "id": "included_item_3",
-      "label": "Included item 3",
-      "default": "Protective packaging"
+      "id": "included_4",
+      "label": "Included line 4",
+      "default": "Support contact path for fit questions"
     },
-    {
-      "type": "text",
-      "id": "included_item_4",
-      "label": "Included item 4",
-      "default": "Order confirmation + tracking updates"
-    },
-    {
-      "type": "text",
-      "id": "included_item_5",
-      "label": "Included item 5",
-      "default": "Support access if fit questions come up"
-    },
-
     {
       "type": "header",
-      "content": "9) Shipping / returns / support"
+      "content": "Shipping / returns / confidence"
     },
     {
       "type": "text",
-      "id": "shipping_heading",
-      "label": "Reassurance heading",
-      "default": "Shipping, returns, and support"
+      "id": "policy_heading",
+      "label": "Policy section heading",
+      "default": "Shipping, returns, and reassurance"
+    },
+    {
+      "type": "text",
+      "id": "shipping_title",
+      "label": "Shipping title",
+      "default": "Shipping"
     },
     {
       "type": "textarea",
-      "id": "shipping_text",
+      "id": "shipping_body",
       "label": "Shipping text",
-      "default": "Processing window and delivery estimate are shown at checkout. We avoid artificial urgency and only show realistic timelines."
+      "default": "Processing and shipping windows are shown at checkout. We keep timelines realistic and visible before purchase."
+    },
+    {
+      "type": "text",
+      "id": "returns_title",
+      "label": "Returns title",
+      "default": "Returns"
     },
     {
       "type": "textarea",
-      "id": "returns_text",
+      "id": "returns_body",
       "label": "Returns text",
-      "default": "If your order arrives damaged or not as expected, contact support within the return window shown in your policy."
+      "default": "If your item arrives damaged or doesn’t match your order, contact support and we’ll make it right under our return policy."
+    },
+    {
+      "type": "text",
+      "id": "guarantee_title",
+      "label": "Confidence title",
+      "default": "Order confidence"
     },
     {
       "type": "textarea",
-      "id": "support_text",
-      "label": "Support text",
-      "default": "Need fit help before ordering? Send your car make/model/year and a seat-gap photo for a better pre-purchase check."
+      "id": "guarantee_body",
+      "label": "Confidence text",
+      "default": "Clear fit guidance, clear policy terms, and responsive support before and after your order."
     },
-    {
-      "type": "textarea",
-      "id": "guarantee_text",
-      "label": "Guarantee / expectation text",
-      "default": "Outcome note: this product is designed to reduce common drops, not eliminate every possible item movement in every vehicle interior."
-    },
-
     {
       "type": "header",
-      "content": "10) FAQ"
+      "content": "FAQ"
     },
     {
       "type": "text",
@@ -1116,81 +1162,71 @@
       "label": "FAQ heading",
       "default": "Frequently asked questions"
     },
-
     {
-      "type": "header",
-      "content": "11) Sticky mobile CTA"
+      "type": "text",
+      "id": "faq_q1",
+      "label": "FAQ question 1",
+      "default": "Will this interfere with my seatbelt buckle?"
+    },
+    {
+      "type": "textarea",
+      "id": "faq_a1",
+      "label": "FAQ answer 1",
+      "default": "Most installs do not interfere when positioned correctly. Always test seatbelt access after installation."
     },
     {
       "type": "text",
-      "id": "sticky_trust_text",
-      "label": "Sticky trust text",
-      "default": "Secure checkout"
-    }
-  ],
-  "blocks": [
+      "id": "faq_q2",
+      "label": "FAQ question 2",
+      "default": "How long does installation take?"
+    },
     {
-      "type": "faq",
-      "name": "FAQ item",
-      "limit": 12,
-      "settings": [
-        {
-          "type": "text",
-          "id": "q",
-          "label": "Question",
-          "default": "Will this fit my car?"
-        },
-        {
-          "type": "textarea",
-          "id": "a",
-          "label": "Answer",
-          "default": "Check the fit section and compare your seat-console gap before ordering."
-        }
-      ]
+      "type": "textarea",
+      "id": "faq_a2",
+      "label": "FAQ answer 2",
+      "default": "Usually under a minute per side. Slide into the seat-console gap and adjust for a snug fit."
+    },
+    {
+      "type": "text",
+      "id": "faq_q3",
+      "label": "FAQ question 3",
+      "default": "How durable is it for daily use?"
+    },
+    {
+      "type": "textarea",
+      "id": "faq_a3",
+      "label": "FAQ answer 3",
+      "default": "It is designed for normal daily use. Lifespan varies by vehicle use, climate, and handling."
+    },
+    {
+      "type": "text",
+      "id": "faq_q4",
+      "label": "FAQ question 4",
+      "default": "What if I pick the wrong pack or fit?"
+    },
+    {
+      "type": "textarea",
+      "id": "faq_a4",
+      "label": "FAQ answer 4",
+      "default": "Contact support promptly with your order number and vehicle details so we can guide next steps."
+    },
+    {
+      "type": "text",
+      "id": "faq_q5",
+      "label": "FAQ question 5",
+      "default": "How fast is shipping?"
+    },
+    {
+      "type": "textarea",
+      "id": "faq_a5",
+      "label": "FAQ answer 5",
+      "default": "Shipping speed depends on destination and current processing volume. Exact timelines appear at checkout."
     }
   ],
   "presets": [
     {
-      "name": "One Page Car Seat",
-      "blocks": [
-        {
-          "type": "faq",
-          "settings": {
-            "q": "Will this interfere with my seatbelt?",
-            "a": "It should sit in the seat-console gap, not over the buckle. If your buckle path is tight, verify placement before driving."
-          }
-        },
-        {
-          "type": "faq",
-          "settings": {
-            "q": "How long does install take?",
-            "a": "Usually under a minute per seat: insert, adjust, then check seat movement and buckle access."
-          }
-        },
-        {
-          "type": "faq",
-          "settings": {
-            "q": "Can I return it if fit is off?",
-            "a": "Follow the published return policy window and contact support with order details."
-          }
-        },
-        {
-          "type": "faq",
-          "settings": {
-            "q": "Is this durable for daily use?",
-            "a": "It’s built for regular use, but lifespan depends on vehicle conditions and handling."
-          }
-        },
-        {
-          "type": "faq",
-          "settings": {
-            "q": "Do you have faster shipping?",
-            "a": "Available shipping methods and ETA display at checkout based on your destination."
-          }
-        }
-      ]
+      "name": "One Page Car Seat"
     }
   ]
 }
 {% endschema %}
-
