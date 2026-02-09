@@ -53,19 +53,9 @@
       endif
 
       assign uses_pack_option = false
-      for option in featured_product.options_with_values
-        assign option_name = option.name | default: ''
+      for option_name in featured_product.options
         if option_name != blank and option_name | downcase contains 'pack'
           assign uses_pack_option = true
-          break
-        endif
-        for option_value in option.values
-          if option_value != blank and option_value | downcase contains 'pack'
-            assign uses_pack_option = true
-            break
-          endif
-        endfor
-        if uses_pack_option
           break
         endif
       endfor

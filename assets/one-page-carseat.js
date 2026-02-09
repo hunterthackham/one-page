@@ -79,29 +79,9 @@
     resolvePackOption() {
       if (!this.product || !Array.isArray(this.product.options)) return;
 
-      let packIndex = this.product.options.findIndex((option) =>
+      const packIndex = this.product.options.findIndex((option) =>
         String(option).toLowerCase().includes('pack')
       );
-
-      if (packIndex === -1) {
-        let bestIndex = null;
-        let bestCount = 0;
-        this.product.options.forEach((_, idx) => {
-          const values = new Set();
-          this.product.variants.forEach((variant) => {
-            if (!Array.isArray(variant.options)) return;
-            const packSize = this.parsePackSize(variant.options[idx]);
-            if (packSize) values.add(packSize);
-          });
-          if (values.size > bestCount) {
-            bestCount = values.size;
-            bestIndex = idx;
-          }
-        });
-        if (bestIndex !== null && bestCount > 0) {
-          packIndex = bestIndex;
-        }
-      }
 
       if (packIndex === -1) return;
 
