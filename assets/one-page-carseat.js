@@ -83,44 +83,20 @@
         String(option).toLowerCase().includes('pack')
       );
 
-      const buildPackValues = (index) => {
-        const values = {};
-        this.product.variants.forEach((variant) => {
-          if (!Array.isArray(variant.options)) return;
-          const value = variant.options[index];
-          const packSize = this.parsePackSize(value);
-          if (packSize && !values[packSize]) {
-            values[packSize] = value;
-          }
-        });
-        return values;
-      };
+      if (packIndex === -1) return;
 
-      let resolvedIndex = packIndex;
-      let packValues = {};
+      this.packOptionIndex = packIndex;
+      this.packOptionValues = {};
 
-      if (resolvedIndex !== -1) {
-        packValues = buildPackValues(resolvedIndex);
-      }
+      this.product.variants.forEach((variant) => {
+        if (!Array.isArray(variant.options)) return;
+        const value = variant.options[packIndex];
+        const packSize = this.parsePackSize(value);
+        if (packSize && !this.packOptionValues[packSize]) {
+          this.packOptionValues[packSize] = value;
+        }
+      });
 
-      if (resolvedIndex === -1 || Object.keys(packValues).length < 2) {
-        let bestIndex = -1;
-        let bestValues = {};
-        this.product.options.forEach((_, index) => {
-          const candidateValues = buildPackValues(index);
-          if (Object.keys(candidateValues).length > Object.keys(bestValues).length) {
-            bestValues = candidateValues;
-            bestIndex = index;
-          }
-        });
-        resolvedIndex = bestIndex;
-        packValues = bestValues;
-      }
-
-      if (resolvedIndex === -1 || Object.keys(packValues).length === 0) return;
-
-      this.packOptionIndex = resolvedIndex;
-      this.packOptionValues = packValues;
       this.usesPackOption = Object.keys(this.packOptionValues).length > 0;
     }
 
@@ -332,10 +308,9 @@
 
     updatePriceCluster(variant) {
       const qty = this.currentPack || 1;
-      const packVariant = this.usesPackOption ? this.getVariantForPack(qty) || variant : variant;
       const multiplier = this.usesPackOption ? 1 : qty;
-      const priceCents = this.toInt(packVariant.price, 0) * multiplier;
-      const compareCents = this.toInt(packVariant.compare_at_price, 0) * multiplier;
+      const priceCents = this.toInt(variant.price, 0) * multiplier;
+      const compareCents = this.toInt(variant.compare_at_price, 0) * multiplier;
       const showCompare = compareCents > priceCents && compareCents > 0;
 
       if (this.priceEl) {
