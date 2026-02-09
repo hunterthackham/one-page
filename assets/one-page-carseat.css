@@ -309,7 +309,8 @@
 .opc-pack-group legend {
   font-size: var(--opc-fs-300);
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  color: var(--opc-text);
 }
 
 .opc-pack-grid {
@@ -321,21 +322,61 @@
   display: grid;
   gap: 6px;
   align-content: start;
-  border: 1px solid var(--opc-border);
+  border: 2px solid var(--opc-border);
   background: #fff;
   border-radius: var(--opc-r-md);
-  padding: 12px 14px;
+  padding: 14px 16px 14px 44px;
   cursor: pointer;
   text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.opc-pack-card:hover {
+  border-color: #c7ccd4;
+  background: var(--opc-surface);
 }
 .opc-pack-card input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
+.opc-pack-card::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--opc-border);
+  border-radius: 50%;
+  background: #fff;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.opc-pack-card.is-active::before {
+  border-color: var(--opc-primary);
+  background: var(--opc-primary);
+  box-shadow: inset 0 0 0 3px #fff;
+}
+.opc-pack-card.is-active::after {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  margin-top: -2px;
+}
 .opc-pack-card.is-active {
   border-color: var(--opc-primary);
-  box-shadow: var(--opc-sh-1);
+  background: #fff;
+  box-shadow: var(--opc-sh-1), 0 0 0 1px var(--opc-primary);
+}
+.opc-pack-card.is-active:hover {
+  background: #fff;
+  border-color: var(--opc-primary);
 }
 .opc-pack-card__title {
   font-size: var(--opc-fs-300);
@@ -345,6 +386,7 @@
   gap: 8px;
   align-items: center;
   line-height: 1.2;
+  color: var(--opc-text);
 }
 .opc-inline-badge {
   font-size: 11px;
