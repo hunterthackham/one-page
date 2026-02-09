@@ -54,8 +54,7 @@
 
       assign uses_pack_option = false
       for option_name in featured_product.options
-        assign option_name_downcase = option_name | downcase
-        if option_name != blank and (option_name_downcase contains 'pack' or option_name_downcase contains 'bundle')
+        if option_name != blank and option_name | downcase contains 'pack'
           assign uses_pack_option = true
           break
         endif
@@ -105,8 +104,7 @@
                   {% if media.preview_image %}
                     data-media-src="{{ media.preview_image | image_url: width: 2048 }}"
                   {% endif %}
-                  data-media-index="{{ forloop.index0 }}"
-                  {% unless media.id == active_media_id %}aria-hidden="true"{% endunless %}
+                  {% unless media.id == active_media_id %}hidden{% endunless %}
                 >
                   {% case media.media_type %}
                     {% when 'image' %}
@@ -243,6 +241,10 @@
 
           {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
             <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
+            <input type="hidden" name="quantity" value="{{ default_pack_qty }}" data-quantity-input>
+
+          {% form 'product', featured_product, id: form_id, class: 'opc-form js-opc-form', novalidate: 'novalidate' %}
+            <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id-input>
             <input type="hidden" name="quantity" value="{% if uses_pack_option %}1{% else %}{{ default_pack_qty }}{% endif %}" data-quantity-input>
 
             {% unless featured_product.has_only_default_variant %}
@@ -251,18 +253,14 @@
                   {% assign option_index = forloop.index0 %}
                   {% assign selected_option_value = current_variant.options[option_index] %}
                   {% assign option_name_downcase = option.name | downcase %}
-                  {% assign option_is_pack = false %}
-                  {% if option_name_downcase contains 'pack' or option_name_downcase contains 'bundle' %}
-                    {% assign option_is_pack = true %}
-                  {% endif %}
-                  <div class="opc-field{% if option_is_pack %} opc-field--hidden{% endif %}">
+                  <div class="opc-field{% if option_name_downcase contains 'pack' %} opc-field--hidden{% endif %}">
                     <label for="Option-{{ section.id }}-{{ option_index }}">{{ option.name }}</label>
                     <select
                       id="Option-{{ section.id }}-{{ option_index }}"
-                      class="opc-select{% if option_is_pack %} opc-select--hidden{% endif %}"
+                      class="opc-select{% if option_name_downcase contains 'pack' %} opc-select--hidden{% endif %}"
                       data-option-index="{{ option_index }}"
                       aria-label="{{ option.name }}"
-                      {% if option_is_pack %}data-pack-option{% endif %}
+                      {% if option_name_downcase contains 'pack' %}data-pack-option{% endif %}
                     >
                       {% for value in option.values %}
                         <option value="{{ value | escape }}"{% if value == selected_option_value %} selected{% endif %}>

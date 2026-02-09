@@ -79,14 +79,9 @@
     resolvePackOption() {
       if (!this.product || !Array.isArray(this.product.options)) return;
 
-      const packSelect = this.root.querySelector('[data-pack-option]');
-      const domIndex = packSelect ? this.toInt(packSelect.dataset.optionIndex, -1) : -1;
-      const packIndex = domIndex >= 0
-        ? domIndex
-        : this.product.options.findIndex((option) => {
-          const normalized = String(option).toLowerCase();
-          return normalized.includes('pack') || normalized.includes('bundle');
-        });
+      const packIndex = this.product.options.findIndex((option) =>
+        String(option).toLowerCase().includes('pack')
+      );
 
       if (packIndex === -1) return;
 
@@ -294,7 +289,7 @@
 
     updateVariant(variant) {
       if (!variant) {
-        this.setSoldOutState(false);
+        this.setSoldOutState(true);
         return;
       }
 
@@ -369,7 +364,7 @@
     }
 
     updateAvailability(variant) {
-      const soldOut = Boolean(variant && variant.available === false);
+      const soldOut = variant && typeof variant.available === 'boolean' ? !variant.available : false;
 
       this.setSoldOutState(soldOut);
     }
@@ -412,23 +407,13 @@
     setActiveMedia(mediaId) {
       if (!mediaId) return;
 
-      const targetIndex = this.getMediaIndexById(mediaId);
-      if (targetIndex === null) {
-        this.ensureActiveMedia();
-        return;
-      }
-
-      this.activeMediaIndex = targetIndex;
-
       this.mediaItems.forEach((item) => {
         const isActive = String(item.dataset.mediaId) === String(mediaId);
         item.classList.toggle('is-active', isActive);
         if (isActive) {
           item.removeAttribute('aria-hidden');
-          item.removeAttribute('inert');
         } else {
           item.setAttribute('aria-hidden', 'true');
-          item.setAttribute('inert', '');
           const video = item.querySelector('video');
           if (video && !video.paused) video.pause();
         }
@@ -446,10 +431,7 @@
 
       const target = this.mediaItems.find((item) => {
         const candidate = item.dataset.mediaSrc;
-        if (candidate && this.normalizeImageUrl(candidate) === normalized) return true;
-        const img = item.querySelector('img');
-        if (img && this.normalizeImageUrl(img.currentSrc || img.src) === normalized) return true;
-        return false;
+        return candidate && this.normalizeImageUrl(candidate) === normalized;
       });
 
       if (target) {
@@ -569,49 +551,9 @@
     normalizeImageUrl(url) {
       if (!url) return '';
       return String(url)
-        .replace(/^https?:\/\/[^/]+/i, '')
         .split('?')[0]
         .replace(/_(\\d+x\\d+|\\d+x|\\d+)(?=\\.[a-z]+$)/i, '')
         .toLowerCase();
-    }
-
-    refreshMediaOrder() {
-      this.mediaOrder = this.mediaItems
-        .slice()
-        .sort((a, b) => {
-          const aIndex = this.toInt(a.dataset.mediaIndex, 0);
-          const bIndex = this.toInt(b.dataset.mediaIndex, 0);
-          return aIndex - bIndex;
-        });
-    }
-
-    getMediaIndexById(mediaId) {
-      const index = this.mediaOrder.findIndex(
-        (item) => String(item.dataset.mediaId) === String(mediaId)
-      );
-      return index === -1 ? null : index;
-    }
-
-    ensureActiveMedia() {
-      if (!this.mediaOrder.length) return;
-      const activeItem = this.mediaOrder.find((item) => item.classList.contains('is-active'));
-      if (!activeItem) {
-        this.setActiveMedia(this.mediaOrder[0].dataset.mediaId);
-        return;
-      }
-      const activeIndex = this.getMediaIndexById(activeItem.dataset.mediaId);
-      if (activeIndex !== null) this.activeMediaIndex = activeIndex;
-    }
-
-    stepMedia(direction) {
-      if (this.mediaOrder.length < 2) return;
-      this.ensureActiveMedia();
-      const total = this.mediaOrder.length;
-      const nextIndex = (this.activeMediaIndex + direction + total) % total;
-      const nextItem = this.mediaOrder[nextIndex];
-      if (nextItem) {
-        this.setActiveMedia(nextItem.dataset.mediaId);
-      }
     }
   }
 
