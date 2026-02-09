@@ -75,11 +75,30 @@
       if (!jsonEl) return;
 
       try {
-        this.product = JSON.parse(jsonEl.textContent);
+        const raw = jsonEl.textContent?.trim();
+        if (!raw) {
+          this.product = null;
+          return;
+        }
+        this.product = JSON.parse(raw);
+        this.normalizeProductData();
       } catch (err) {
         console.warn('[OnePageCarSeat] Product JSON parse failed', err);
         this.product = null;
       }
+    }
+
+    normalizeProductData() {
+      if (!this.product || !Array.isArray(this.product.variants)) return;
+      this.product.variants.forEach((variant) => {
+        if (Array.isArray(variant.options) && variant.options.length) return;
+        const options = [variant.option1, variant.option2, variant.option3].filter(
+          (value) => value != null && value !== ''
+        );
+        if (options.length) {
+          variant.options = options;
+        }
+      });
     }
 
     resolvePackOption() {
