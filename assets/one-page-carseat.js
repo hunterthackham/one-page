@@ -51,6 +51,7 @@
 
     init() {
       this.parseProductData();
+      if (!this.product) return;
       this.resolvePackOption();
       this.bindVariantEvents();
       this.bindPackEvents();
@@ -58,7 +59,12 @@
       this.bindSubmitMirrors();
       this.setPack(this.currentPack, { fromUI: false });
 
-      const initialVariant = this.resolveVariant() || this.getVariantById(this.variantIdInput?.value);
+      const initialVariant =
+        this.resolveVariant() ||
+        this.getVariantById(this.variantIdInput?.value) ||
+        this.firstAvailableVariant() ||
+        (this.product.variants && this.product.variants[0]) ||
+        null;
       this.updateVariant(initialVariant);
 
       this.bindStickyBehavior();
@@ -135,7 +141,11 @@
       this.packRadios.forEach((radio) => {
         radio.addEventListener('change', () => {
           if (radio.checked) {
-            this.setPack(this.toInt(radio.value, 1), { fromUI: true });
+            if (this.usesPackOption && this.optionSelects[this.packOptionIndex]) {
+              this.setPackByOptionValue(radio.value, { fromUI: true });
+            } else {
+              this.setPack(this.toInt(radio.value, 1), { fromUI: true });
+            }
           }
         });
       });
@@ -149,7 +159,11 @@
 
       if (this.stickyPack) {
         this.stickyPack.addEventListener('change', () => {
-          this.setPack(this.toInt(this.stickyPack.value, this.currentPack || 1), { fromUI: true });
+          if (this.usesPackOption) {
+            this.setPackByOptionValue(this.stickyPack.value, { fromUI: true });
+          } else {
+            this.setPack(this.toInt(this.stickyPack.value, this.currentPack || 1), { fromUI: true });
+          }
         });
       }
     }
@@ -280,6 +294,22 @@
       }
     }
 
+    setPackByOptionValue(optionValue, opts = {}) {
+      if (!this.usesPackOption || !this.optionSelects[this.packOptionIndex]) return;
+      const select = this.optionSelects[this.packOptionIndex];
+      const value = String(optionValue || '').trim();
+      if (!value) return;
+      select.value = value;
+      const variant = this.resolveVariant();
+      const packSize = this.parsePackSize(value);
+      if (packSize != null) this.currentPack = packSize;
+      this.syncPackUi();
+      this.updateVariant(variant);
+      if (opts.focusForm && this.form) {
+        this.form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
     resolveVariant() {
       if (!this.product || !Array.isArray(this.product.variants) || this.product.variants.length === 0) {
         return null;
@@ -384,8 +414,8 @@
     }
 
     updateAvailability(variant) {
-      const soldOut = variant && typeof variant.available === 'boolean' ? !variant.available : false;
-
+      const soldOut =
+        !variant || (typeof variant.available === 'boolean' && !variant.available);
       this.setSoldOutState(soldOut);
     }
 
@@ -424,6 +454,22 @@
       }
     }
 
+    refreshMediaOrder() {
+      this.mediaOrder = this.mediaItems.map((el) => el.dataset.mediaId).filter(Boolean);
+      const active = this.mediaItems.find((el) => el.classList.contains('is-active'));
+      const id = active ? active.dataset.mediaId : this.mediaOrder[0];
+      this.activeMediaIndex = id ? this.mediaOrder.indexOf(String(id)) : 0;
+      if (this.activeMediaIndex < 0) this.activeMediaIndex = 0;
+    }
+
+    stepMedia(delta) {
+      if (!this.mediaOrder.length) return;
+      this.activeMediaIndex =
+        (this.activeMediaIndex + delta + this.mediaOrder.length) % this.mediaOrder.length;
+      const mediaId = this.mediaOrder[this.activeMediaIndex];
+      if (mediaId) this.setActiveMedia(mediaId);
+    }
+
     setActiveMedia(mediaId) {
       if (!mediaId) return;
 
@@ -431,8 +477,10 @@
         const isActive = String(item.dataset.mediaId) === String(mediaId);
         item.classList.toggle('is-active', isActive);
         if (isActive) {
+          item.removeAttribute('hidden');
           item.removeAttribute('aria-hidden');
         } else {
+          item.setAttribute('hidden', '');
           item.setAttribute('aria-hidden', 'true');
           const video = item.querySelector('video');
           if (video && !video.paused) video.pause();
@@ -443,6 +491,9 @@
         const isActive = String(btn.dataset.mediaId) === String(mediaId);
         btn.classList.toggle('is-active', isActive);
       });
+
+      const idx = this.mediaOrder.indexOf(String(mediaId));
+      if (idx >= 0) this.activeMediaIndex = idx;
     }
 
     setActiveMediaBySrc(src) {
@@ -534,9 +585,11 @@
 
     parsePackSize(value) {
       if (!value) return null;
-      const match = String(value).match(/(^|\D)(1|2|4)(\D|$)/);
-      if (!match) return null;
-      return this.toInt(match[2], null);
+      const s = String(value);
+      const match = s.match(/(^|\D)(\d+)(\D|$)/);
+      if (match) return this.toInt(match[2], null);
+      const n = parseInt(s, 10);
+      return Number.isFinite(n) ? n : null;
     }
 
     syncPackToVariant(variant) {
@@ -554,17 +607,34 @@
         this.qtyInput.value = '1';
       }
 
+      const currentValue = this.usesPackOption && this.optionSelects[this.packOptionIndex]
+        ? this.optionSelects[this.packOptionIndex].value
+        : String(this.currentPack);
+
       this.packRadios.forEach((radio) => {
-        radio.checked = this.toInt(radio.value, 0) === this.currentPack;
+        const match = this.usesPackOption
+          ? radio.value === currentValue
+          : this.toInt(radio.value, 0) === this.currentPack;
+        radio.checked = match;
       });
 
       this.packCards.forEach((card) => {
-        const cardQty = this.toInt(card.dataset.packCard, 0);
-        card.classList.toggle('is-active', cardQty === this.currentPack);
+        const cardVal = card.dataset.packCard;
+        const match = this.usesPackOption
+          ? cardVal === currentValue
+          : this.toInt(cardVal, 0) === this.currentPack;
+        card.classList.toggle('is-active', match);
       });
 
-      if (this.stickyPack && this.stickyPack.value !== String(this.currentPack)) {
-        this.stickyPack.value = String(this.currentPack);
+      if (this.stickyPack) {
+        const stickyVal = this.usesPackOption
+          ? (this.packOptionValues[this.currentPack] || currentValue)
+          : String(this.currentPack);
+        if (this.stickyPack.querySelector(`option[value="${CSS.escape(stickyVal)}"]`)) {
+          this.stickyPack.value = stickyVal;
+        } else if (this.stickyPack.value !== String(this.currentPack)) {
+          this.stickyPack.value = String(this.currentPack);
+        }
       }
     }
 
