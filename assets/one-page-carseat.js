@@ -77,42 +77,27 @@
     }
 
     resolvePackOption() {
-      if (!this.product || !Array.isArray(this.product.variants)) return;
+      if (!this.product || !Array.isArray(this.product.options)) return;
 
-      const optionCount = Array.isArray(this.product.options)
-        ? this.product.options.length
-        : (this.product.variants[0]?.options || []).length;
+      const packIndex = this.product.options.findIndex((option) =>
+        String(option).toLowerCase().includes('pack')
+      );
 
-      if (!optionCount) return;
+      if (packIndex === -1) return;
 
-      let bestIndex = null;
-      let bestMatches = 0;
-      let bestValues = {};
+      this.packOptionIndex = packIndex;
+      this.packOptionValues = {};
 
-      for (let idx = 0; idx < optionCount; idx += 1) {
-        const packValues = {};
-        this.product.variants.forEach((variant) => {
-          if (!Array.isArray(variant.options)) return;
-          const value = variant.options[idx];
-          const packSize = this.parsePackSize(value);
-          if (packSize && !packValues[packSize]) {
-            packValues[packSize] = value;
-          }
-        });
-
-        const matchCount = Object.keys(packValues).length;
-        if (matchCount > bestMatches) {
-          bestMatches = matchCount;
-          bestIndex = idx;
-          bestValues = packValues;
+      this.product.variants.forEach((variant) => {
+        if (!Array.isArray(variant.options)) return;
+        const value = variant.options[packIndex];
+        const packSize = this.parsePackSize(value);
+        if (packSize && !this.packOptionValues[packSize]) {
+          this.packOptionValues[packSize] = value;
         }
-      }
+      });
 
-      if (!bestMatches || bestIndex === null) return;
-
-      this.packOptionIndex = bestIndex;
-      this.packOptionValues = bestValues;
-      this.usesPackOption = true;
+      this.usesPackOption = Object.keys(this.packOptionValues).length > 0;
     }
 
     bindVariantEvents() {
