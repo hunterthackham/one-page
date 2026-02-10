@@ -45,7 +45,7 @@
   {% else %}
     {% liquid
       assign current_variant = featured_product.selected_or_first_available_variant
-      assign active_media = current_variant.featured_media | default: featured_product.featured_media | default: featured_product.media.first
+      assign active_media = current_variant.featured_media | default: featured_product.featured_media
       assign active_media_id = active_media.id
       assign form_id = 'opc-form-' | append: section.id
       assign has_compare = false
@@ -193,8 +193,8 @@
             {% endif %}
           </div>
 
-          {% if featured_product.media.size > 0 %}
-            <div class="opc-thumb-row{% if featured_product.media.size < 2 %} is-hidden{% endif %}" aria-label="Choose product media">
+          {% if featured_product.media.size > 1 %}
+            <div class="opc-thumb-row" aria-label="Choose product media">
               {% for media in featured_product.media %}
                 <button
                   type="button"
