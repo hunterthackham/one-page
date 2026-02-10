@@ -24,6 +24,7 @@
 
       this.mediaItems = Array.from(root.querySelectorAll('[data-media-id]'));
       this.mediaThumbs = Array.from(root.querySelectorAll('[data-media-thumb]'));
+      this.mediaThumbRow = root.querySelector('[data-media-thumbs]') || root.querySelector('.opc-thumb-row');
       this.mediaPrev = root.querySelector('[data-media-prev]');
       this.mediaNext = root.querySelector('[data-media-next]');
       this.mediaOrder = [];
@@ -169,6 +170,7 @@
     }
 
     bindMediaEvents() {
+      this.ensureMediaThumbs();
       this.refreshMediaOrder();
 
       this.mediaThumbs.forEach((btn) => {
@@ -452,6 +454,42 @@
       if (featuredSrc) {
         this.setActiveMediaBySrc(featuredSrc);
       }
+    }
+
+    ensureMediaThumbs() {
+      if (this.mediaThumbs.length || !this.mediaThumbRow || this.mediaItems.length <= 1) return;
+
+      const fragment = document.createDocumentFragment();
+      this.mediaItems.forEach((item, idx) => {
+        const mediaId = item.dataset.mediaId;
+        if (!mediaId) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'opc-thumb-btn';
+        btn.setAttribute('data-media-thumb', '');
+        btn.setAttribute('data-media-id', mediaId);
+        btn.setAttribute('aria-label', `Show media ${idx + 1}`);
+
+        const image = item.querySelector('img');
+        if (image?.currentSrc || image?.src) {
+          const thumb = document.createElement('img');
+          thumb.src = image.currentSrc || image.src;
+          thumb.alt = image.alt || '';
+          thumb.loading = 'lazy';
+          btn.appendChild(thumb);
+        } else {
+          const fallback = document.createElement('span');
+          fallback.className = 'opc-thumb-fallback';
+          fallback.textContent = `Media ${idx + 1}`;
+          btn.appendChild(fallback);
+        }
+
+        fragment.appendChild(btn);
+      });
+
+      this.mediaThumbRow.appendChild(fragment);
+      this.mediaThumbs = Array.from(this.root.querySelectorAll('[data-media-thumb]'));
     }
 
     refreshMediaOrder() {
