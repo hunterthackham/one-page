@@ -20,6 +20,7 @@
   data-opc-root
   data-section-id="{{ section.id }}"
   data-currency-code="{{ cart.currency.iso_code | default: shop.currency }}"
+  data-product-handle="{{ featured_product.handle }}"
   data-default-pack="{{ default_pack_qty }}"
   data-pack-label-1="{{ section.settings.pack_1_label | default: '1-Pack' | escape }}"
   data-pack-label-2="{{ section.settings.pack_2_label | default: '2-Pack' | escape }}"
@@ -46,10 +47,6 @@
       assign current_variant = featured_product.selected_or_first_available_variant
       assign active_media = current_variant.featured_media | default: featured_product.featured_media
       assign active_media_id = active_media.id
-      assign gallery_count = featured_product.media.size
-      if gallery_count == 0
-        assign gallery_count = featured_product.images.size
-      endif
       assign form_id = 'opc-form-' | append: section.id
       assign has_compare = false
       if current_variant.compare_at_price > current_variant.price
@@ -119,8 +116,6 @@
                   data-media-id="{{ media.id }}"
                   {% if media.preview_image %}
                     data-media-src="{{ media.preview_image | image_url: width: 2048 }}"
-                  {% elsif media.media_type == 'image' %}
-                    data-media-src="{{ media | image_url: width: 2048 }}"
                   {% endif %}
                   {% unless media.id == active_media_id %}hidden{% endunless %}
                 >
@@ -170,26 +165,6 @@
                   {% endcase %}
                 </div>
               {% endfor %}
-            {% elsif featured_product.images.size > 0 %}
-              {% assign active_image = current_variant.featured_image | default: featured_product.featured_image | default: featured_product.images.first %}
-              {% for image in featured_product.images %}
-                <div
-                  class="opc-media-item{% if image.id == active_image.id %} is-active{% endif %}"
-                  data-media-id="image-{{ image.id }}"
-                  data-media-src="{{ image | image_url: width: 2048 }}"
-                  {% unless image.id == active_image.id %}hidden{% endunless %}
-                >
-                  {{
-                    image
-                    | image_url: width: 1400
-                    | image_tag:
-                      loading: 'eager',
-                      widths: '420, 640, 900, 1200, 1400',
-                      sizes: '(min-width: 990px) 50vw, 100vw',
-                      alt: image.alt | default: featured_product.title
-                  }}
-                </div>
-              {% endfor %}
             {% elsif section.settings.hero_fallback_image != blank %}
               <div class="opc-media-item is-active" data-media-id="fallback">
                 {{
@@ -208,7 +183,7 @@
               </div>
             {% endif %}
 
-            {% if gallery_count > 1 %}
+            {% if featured_product.media.size > 1 %}
               <button type="button" class="opc-media-nav opc-media-nav--prev" data-media-prev aria-label="Previous image">
                 <span aria-hidden="true">‹</span>
               </button>
@@ -218,64 +193,31 @@
             {% endif %}
           </div>
 
-          {% if gallery_count > 1 %}
+          {% if featured_product.media.size > 1 %}
             <div class="opc-thumb-row" aria-label="Choose product media">
-              {% if featured_product.media.size > 0 %}
-                {% for media in featured_product.media %}
-                  <button
-                    type="button"
-                    class="opc-thumb-btn{% if media.id == active_media_id %} is-active{% endif %}"
-                    data-media-thumb
-                    data-media-id="{{ media.id }}"
-                    aria-label="Show media {{ forloop.index }}"
-                  >
-                    {% if media.preview_image %}
-                      {{
-                        media.preview_image
-                        | image_url: width: 180
-                        | image_tag:
-                          loading: 'lazy',
-                          widths: '90, 120, 180',
-                          sizes: '72px',
-                          alt: media.alt | default: featured_product.title
-                      }}
-                    {% elsif media.media_type == 'image' %}
-                      {{
-                        media
-                        | image_url: width: 180
-                        | image_tag:
-                          loading: 'lazy',
-                          widths: '90, 120, 180',
-                          sizes: '72px',
-                          alt: media.alt | default: featured_product.title
-                      }}
-                    {% else %}
-                      <span class="opc-thumb-fallback">Media {{ forloop.index }}</span>
-                    {% endif %}
-                  </button>
-                {% endfor %}
-              {% else %}
-                {% assign active_image = current_variant.featured_image | default: featured_product.featured_image | default: featured_product.images.first %}
-                {% for image in featured_product.images %}
-                  <button
-                    type="button"
-                    class="opc-thumb-btn{% if image.id == active_image.id %} is-active{% endif %}"
-                    data-media-thumb
-                    data-media-id="image-{{ image.id }}"
-                    aria-label="Show image {{ forloop.index }}"
-                  >
+              {% for media in featured_product.media %}
+                <button
+                  type="button"
+                  class="opc-thumb-btn{% if media.id == active_media_id %} is-active{% endif %}"
+                  data-media-thumb
+                  data-media-id="{{ media.id }}"
+                  aria-label="Show media {{ forloop.index }}"
+                >
+                  {% if media.preview_image %}
                     {{
-                      image
+                      media.preview_image
                       | image_url: width: 180
                       | image_tag:
                         loading: 'lazy',
                         widths: '90, 120, 180',
                         sizes: '72px',
-                        alt: image.alt | default: featured_product.title
+                        alt: media.alt | default: featured_product.title
                     }}
-                  </button>
-                {% endfor %}
-              {% endif %}
+                  {% else %}
+                    <span class="opc-thumb-fallback">Media {{ forloop.index }}</span>
+                  {% endif %}
+                </button>
+              {% endfor %}
             </div>
           {% endif %}
         </div>
