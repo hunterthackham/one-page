@@ -20,6 +20,7 @@
   data-opc-root
   data-section-id="{{ section.id }}"
   data-currency-code="{{ cart.currency.iso_code | default: shop.currency }}"
+  data-product-handle="{{ featured_product.handle }}"
   data-default-pack="{{ default_pack_qty }}"
   data-pack-label-1="{{ section.settings.pack_1_label | default: '1-Pack' | escape }}"
   data-pack-label-2="{{ section.settings.pack_2_label | default: '2-Pack' | escape }}"
