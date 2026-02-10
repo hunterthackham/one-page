@@ -193,7 +193,6 @@
 
     bindMediaEvents() {
       this.refreshMediaOrder();
-      this.ensureActiveMedia();
 
       this.mediaThumbs.forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -484,26 +483,6 @@
       const id = active ? active.dataset.mediaId : this.mediaOrder[0];
       this.activeMediaIndex = id ? this.mediaOrder.indexOf(String(id)) : 0;
       if (this.activeMediaIndex < 0) this.activeMediaIndex = 0;
-    }
-
-    ensureActiveMedia() {
-      if (!this.mediaItems.length) return;
-
-      const hasActive = this.mediaItems.some((item) => item.classList.contains('is-active'));
-      if (!hasActive) {
-        const fallbackId = this.mediaOrder[0] || this.mediaItems[0]?.dataset.mediaId;
-        if (fallbackId) {
-          this.setActiveMedia(String(fallbackId));
-        }
-        return;
-      }
-
-      this.mediaItems.forEach((item) => {
-        if (item.classList.contains('is-active')) {
-          item.removeAttribute('hidden');
-          item.removeAttribute('aria-hidden');
-        }
-      });
     }
 
     stepMedia(delta) {
