@@ -23,6 +23,7 @@
       this.heroEl = root.querySelector('[data-hero]');
 
       this.mediaItems = Array.from(root.querySelectorAll('[data-media-id]'));
+      this.mediaThumbsWrap = root.querySelector('[data-media-thumbs]');
       this.mediaThumbs = Array.from(root.querySelectorAll('[data-media-thumb]'));
       this.mediaPrev = root.querySelector('[data-media-prev]');
       this.mediaNext = root.querySelector('[data-media-next]');
@@ -169,6 +170,7 @@
     }
 
     bindMediaEvents() {
+      this.ensureMediaThumbs();
       this.refreshMediaOrder();
 
       this.mediaThumbs.forEach((btn) => {
@@ -186,6 +188,44 @@
       if (this.mediaNext) {
         this.mediaNext.addEventListener('click', () => this.stepMedia(1));
       }
+    }
+
+
+    ensureMediaThumbs() {
+      if (this.mediaThumbs.length || this.mediaItems.length <= 1 || !this.mediaThumbsWrap) return;
+
+      const fragment = document.createDocumentFragment();
+
+      this.mediaItems.forEach((item, idx) => {
+        const mediaId = item.dataset.mediaId;
+        if (!mediaId) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'opc-thumb-btn';
+        btn.dataset.mediaThumb = '';
+        btn.dataset.mediaId = mediaId;
+        btn.setAttribute('aria-label', `Show media ${idx + 1}`);
+
+        const img = item.querySelector('img');
+        if (img) {
+          const thumbImg = document.createElement('img');
+          thumbImg.src = img.currentSrc || img.src;
+          thumbImg.alt = img.alt || '';
+          thumbImg.loading = 'lazy';
+          btn.appendChild(thumbImg);
+        } else {
+          const fallback = document.createElement('span');
+          fallback.className = 'opc-thumb-fallback';
+          fallback.textContent = `Media ${idx + 1}`;
+          btn.appendChild(fallback);
+        }
+
+        fragment.appendChild(btn);
+      });
+
+      this.mediaThumbsWrap.appendChild(fragment);
+      this.mediaThumbs = Array.from(this.root.querySelectorAll('[data-media-thumb]'));
     }
 
     bindSubmitMirrors() {
@@ -443,8 +483,7 @@
         variant.featured_image?.id ||
         null;
 
-      if (featuredMediaId) {
-        this.setActiveMedia(String(featuredMediaId));
+      if (featuredMediaId && this.setActiveMedia(String(featuredMediaId))) {
         return;
       }
 
@@ -471,10 +510,13 @@
     }
 
     setActiveMedia(mediaId) {
-      if (!mediaId) return;
+      if (!mediaId) return false;
+
+      let matched = false;
 
       this.mediaItems.forEach((item) => {
         const isActive = String(item.dataset.mediaId) === String(mediaId);
+        if (isActive) matched = true;
         item.classList.toggle('is-active', isActive);
         if (isActive) {
           item.removeAttribute('hidden');
@@ -494,6 +536,7 @@
 
       const idx = this.mediaOrder.indexOf(String(mediaId));
       if (idx >= 0) this.activeMediaIndex = idx;
+      return matched;
     }
 
     setActiveMediaBySrc(src) {
