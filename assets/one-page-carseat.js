@@ -24,7 +24,6 @@
 
       this.mediaItems = Array.from(root.querySelectorAll('[data-media-id]'));
       this.mediaThumbs = Array.from(root.querySelectorAll('[data-media-thumb]'));
-      this.mediaThumbRow = root.querySelector('[data-media-thumbs]') || root.querySelector('.opc-thumb-row');
       this.mediaPrev = root.querySelector('[data-media-prev]');
       this.mediaNext = root.querySelector('[data-media-next]');
       this.mediaOrder = [];
@@ -52,23 +51,29 @@
 
     init() {
       this.parseProductData();
-      if (!this.product) return;
-      this.resolvePackOption();
-      this.bindVariantEvents();
-      this.bindPackEvents();
-      this.bindMediaEvents();
-      this.bindSubmitMirrors();
-      this.setPack(this.currentPack, { fromUI: false });
+      this.ensureProductData()
+        .then(() => {
+          if (!this.product) return;
+          this.resolvePackOption();
+          this.bindVariantEvents();
+          this.bindPackEvents();
+          this.bindMediaEvents();
+          this.bindSubmitMirrors();
+          this.setPack(this.currentPack, { fromUI: false });
 
-      const initialVariant =
-        this.resolveVariant() ||
-        this.getVariantById(this.variantIdInput?.value) ||
-        this.firstAvailableVariant() ||
-        (this.product.variants && this.product.variants[0]) ||
-        null;
-      this.updateVariant(initialVariant);
+          const initialVariant =
+            this.resolveVariant() ||
+            this.getVariantById(this.variantIdInput?.value) ||
+            this.firstAvailableVariant() ||
+            (this.product.variants && this.product.variants[0]) ||
+            null;
+          this.updateVariant(initialVariant);
 
-      this.bindStickyBehavior();
+          this.bindStickyBehavior();
+        })
+        .catch((err) => {
+          console.warn('[OnePageCarSeat] Product data unavailable', err);
+        });
     }
 
     parseProductData() {
@@ -81,6 +86,23 @@
         console.warn('[OnePageCarSeat] Product JSON parse failed', err);
         this.product = null;
       }
+    }
+
+    ensureProductData() {
+      if (this.product && Array.isArray(this.product.variants) && this.product.variants.length) {
+        return Promise.resolve();
+      }
+
+      const handle = this.root.dataset.productHandle;
+      if (!handle) return Promise.resolve();
+
+      return fetch(`/products/${handle}.js`, { credentials: 'same-origin' })
+        .then((resp) => (resp.ok ? resp.json() : null))
+        .then((data) => {
+          if (data && Array.isArray(data.variants) && data.variants.length) {
+            this.product = data;
+          }
+        });
     }
 
     resolvePackOption() {
@@ -170,7 +192,6 @@
     }
 
     bindMediaEvents() {
-      this.ensureMediaThumbs();
       this.refreshMediaOrder();
 
       this.mediaThumbs.forEach((btn) => {
@@ -454,42 +475,6 @@
       if (featuredSrc) {
         this.setActiveMediaBySrc(featuredSrc);
       }
-    }
-
-    ensureMediaThumbs() {
-      if (this.mediaThumbs.length || !this.mediaThumbRow || this.mediaItems.length <= 1) return;
-
-      const fragment = document.createDocumentFragment();
-      this.mediaItems.forEach((item, idx) => {
-        const mediaId = item.dataset.mediaId;
-        if (!mediaId) return;
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'opc-thumb-btn';
-        btn.setAttribute('data-media-thumb', '');
-        btn.setAttribute('data-media-id', mediaId);
-        btn.setAttribute('aria-label', `Show media ${idx + 1}`);
-
-        const image = item.querySelector('img');
-        if (image?.currentSrc || image?.src) {
-          const thumb = document.createElement('img');
-          thumb.src = image.currentSrc || image.src;
-          thumb.alt = image.alt || '';
-          thumb.loading = 'lazy';
-          btn.appendChild(thumb);
-        } else {
-          const fallback = document.createElement('span');
-          fallback.className = 'opc-thumb-fallback';
-          fallback.textContent = `Media ${idx + 1}`;
-          btn.appendChild(fallback);
-        }
-
-        fragment.appendChild(btn);
-      });
-
-      this.mediaThumbRow.appendChild(fragment);
-      this.mediaThumbs = Array.from(this.root.querySelectorAll('[data-media-thumb]'));
     }
 
     refreshMediaOrder() {
