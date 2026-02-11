@@ -59,6 +59,10 @@
           this.bindPackEvents();
           this.bindMediaEvents();
           this.bindSubmitMirrors();
+          /* PATCH START */
+          this.bindFitScroll();
+          this.applyStorefrontSafetyFilters();
+          /* PATCH END */
           this.setPack(this.currentPack, { fromUI: false });
 
           const initialVariant =
@@ -220,6 +224,56 @@
         this.stickySubmit.addEventListener('click', () => this.submitMainForm());
       }
     }
+
+    /* PATCH START */
+    bindFitScroll() {
+      const fitScrollBtn = this.root.querySelector('[data-fit-scroll]');
+      if (!fitScrollBtn) return;
+      fitScrollBtn.addEventListener('click', () => {
+        const targetId = fitScrollBtn.dataset.fitTarget;
+        const target = targetId ? document.getElementById(targetId) : null;
+        if (!target) return;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    applyStorefrontSafetyFilters() {
+      const noiseRegex = /(origin:|mainland china|high-concerned chemical|choice:|semi_?choice:|\bcn:|model number:)/i;
+      const subscriptionRegex = /(recurring|deferred purchase|subscription|subscribe\s*&\s*save|selling plan|delivery every)/i;
+
+      this.root.querySelectorAll('a[href]').forEach((link) => {
+        const href = (link.getAttribute('href') || '').trim();
+        if (!href) return;
+        try {
+          const url = new URL(href, window.location.origin);
+          if (url.origin !== window.location.origin && link.closest('.opc-ugc-card, .review, .reviews, [class*="review"]')) {
+            link.setAttribute('hidden', 'hidden');
+            link.setAttribute('aria-hidden', 'true');
+            link.tabIndex = -1;
+          }
+        } catch (e) {
+          // Ignore malformed URLs
+        }
+      });
+
+      this.root.querySelectorAll('p, li, span').forEach((node) => {
+        const text = (node.textContent || '').trim();
+        if (!text) return;
+        if (noiseRegex.test(text)) {
+          node.setAttribute('hidden', 'hidden');
+          node.setAttribute('aria-hidden', 'true');
+        }
+
+        if (subscriptionRegex.test(text)) {
+          const hasSellingPlanSelected = !!this.form?.querySelector('[name="selling_plan"]:checked, [name="selling_plan"] option:checked[value]:not([value=""])');
+          if (!hasSellingPlanSelected) {
+            node.setAttribute('hidden', 'hidden');
+            node.setAttribute('aria-hidden', 'true');
+          }
+        }
+      });
+    }
+    /* PATCH END */
 
     bindStickyBehavior() {
       if (!this.stickyBar || !this.heroEl) return;
