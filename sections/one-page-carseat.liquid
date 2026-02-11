@@ -68,7 +68,20 @@
         if option_is_pack
           assign uses_pack_option = true
           assign pack_option_position = forloop.index0
-          assign current_pack_option_value = current_variant.options[pack_option_position] | default: ''
+          assign desired_pack_value = ''
+          for value in option.values
+            assign normalized_value = value | downcase | strip
+            assign normalized_value = normalized_value | remove: 'pack' | remove: '-' | remove: ' '
+            if normalized_value == default_pack
+              assign desired_pack_value = value
+              break
+            endif
+          endfor
+          if desired_pack_value != ''
+            assign current_pack_option_value = desired_pack_value
+          else
+            assign current_pack_option_value = current_variant.options[pack_option_position] | default: ''
+          endif
           break
         endif
       endfor
@@ -382,6 +395,17 @@
                 {{ section.settings.sold_out_text | default: 'Sold out' }}
               {% endif %}
             </button>
+
+            <!-- PATCH START -->
+            <button type="button" class="opc-btn opc-btn--ghost" data-fit-scroll data-fit-target="opc-fit-{{ section.id }}">
+              Check fit (takes 10 sec)
+            </button>
+            <ul class="opc-trust-micro" aria-label="Trust highlights">
+              <li>Installs in 60 seconds</li>
+              <li>Seatbelt access stays clear</li>
+              <li>30-day returns</li>
+            </ul>
+            <!-- PATCH END -->
 
             <div class="opc-trust-lines">
               {% if section.settings.trust_line_1 != blank %}<p>{{ section.settings.trust_line_1 }}</p>{% endif %}

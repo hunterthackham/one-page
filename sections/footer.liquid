@@ -41,8 +41,19 @@
       --last-row-count: {{ last_row_count }};
       --tablet-last-row-count: {{ tablet_last_row_count }};
     "
-  >
+    >
     {% content_for 'blocks' %}
+    <!-- PATCH START -->
+    <div class="footer-trust-links">
+      <a href="{{ shop.shipping_policy.url | default: '/policies/shipping-policy' }}">Shipping Policy</a>
+      <a href="{{ shop.refund_policy.url | default: '/policies/refund-policy' }}">Refund/Returns Policy</a>
+      <a href="{{ shop.terms_of_service.url | default: '/policies/terms-of-service' }}">Terms of Service</a>
+      <a href="{{ shop.privacy_policy.url | default: '/policies/privacy-policy' }}">Privacy Policy</a>
+      <a href="/pages/contact">Contact</a>
+      <a href="/pages/faq">FAQ</a>
+      <a href="/pages/track-order">Track Order</a>
+    </div>
+    <!-- PATCH END -->
   </div>
 </div>
 
@@ -54,6 +65,14 @@
     grid-template-columns: 1fr;
     gap: var(--footer-gap);
   }
+
+  /* PATCH START */
+  .footer-trust-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  /* PATCH END */
 
   @media screen and (min-width: 750px) and (max-width: 989px) {
     .footer-content {
