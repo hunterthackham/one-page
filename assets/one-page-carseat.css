@@ -322,7 +322,7 @@
   display: grid;
   gap: 6px;
   align-content: start;
-  border: 1px solid var(--opc-border);
+  border: 2px solid var(--opc-border);
   background: #fff;
   border-radius: var(--opc-r-md);
   padding: 14px 16px 14px 44px;
@@ -345,9 +345,9 @@
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--opc-border);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--opc-border);
   border-radius: 50%;
   background: #fff;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
@@ -360,19 +360,19 @@
 .opc-pack-card.is-active::after {
   content: "";
   position: absolute;
-  left: 18px;
+  left: 19px;
   top: 50%;
   transform: translateY(-50%) rotate(45deg);
-  width: 4px;
-  height: 9px;
+  width: 5px;
+  height: 10px;
   border: solid #fff;
-  border-width: 0 1.5px 1.5px 0;
+  border-width: 0 2px 2px 0;
   margin-top: -2px;
 }
 .opc-pack-card.is-active {
   border-color: var(--opc-primary);
   background: #fff;
-  box-shadow: var(--opc-sh-1), 0 0 0 0.5px var(--opc-primary);
+  box-shadow: var(--opc-sh-1), 0 0 0 1px var(--opc-primary);
 }
 .opc-pack-card.is-active:hover {
   background: #fff;
@@ -393,22 +393,8 @@
   line-height: 1;
   padding: 4px 8px;
   border-radius: var(--opc-r-pill);
-  border: 1px solid transparent;
-}
-.opc-inline-badge--popular {
   background: #fee2e2;
-  border-color: #fecaca;
   color: #7f1d1d;
-}
-.opc-inline-badge--neutral {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-  color: #374151;
-}
-.opc-inline-badge--value {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #065f46;
 }
 .opc-pack-card__sub {
   color: var(--opc-muted);
