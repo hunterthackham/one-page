@@ -304,7 +304,12 @@
                       data-pack-radio
                       {% if default_pack == '1' %}checked{% endif %}
                     >
-                    <span class="opc-pack-card__title">{{ section.settings.pack_1_label | default: '1-Pack' }}</span>
+                    <span class="opc-pack-card__title">
+                      {{ section.settings.pack_1_label | default: '1-Pack' }}
+                      {% if section.settings.pack_1_badge != blank %}
+                        <span class="opc-inline-badge opc-inline-badge--neutral">{{ section.settings.pack_1_badge }}</span>
+                      {% endif %}
+                    </span>
                     {% if section.settings.pack_1_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_1_sub }}</span>{% endif %}
                     {% if section.settings.pack_1_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_1_savings }}</span>{% endif %}
                   </label>
@@ -320,7 +325,7 @@
                     <span class="opc-pack-card__title">
                       {{ section.settings.pack_2_label | default: '2-Pack' }}
                       {% if section.settings.pack_2_badge != blank %}
-                        <span class="opc-inline-badge">{{ section.settings.pack_2_badge }}</span>
+                        <span class="opc-inline-badge opc-inline-badge--popular">{{ section.settings.pack_2_badge }}</span>
                       {% endif %}
                     </span>
                     {% if section.settings.pack_2_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_2_sub }}</span>{% endif %}
@@ -335,7 +340,12 @@
                       data-pack-radio
                       {% if default_pack == '4' %}checked{% endif %}
                     >
-                    <span class="opc-pack-card__title">{{ section.settings.pack_4_label | default: '4-Pack' }}</span>
+                    <span class="opc-pack-card__title">
+                      {{ section.settings.pack_4_label | default: '4-Pack' }}
+                      {% if section.settings.pack_4_badge != blank %}
+                        <span class="opc-inline-badge opc-inline-badge--value">{{ section.settings.pack_4_badge }}</span>
+                      {% endif %}
+                    </span>
                     {% if section.settings.pack_4_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_4_sub }}</span>{% endif %}
                     {% if section.settings.pack_4_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_4_savings }}</span>{% endif %}
                   </label>
@@ -1019,6 +1029,12 @@
     },
     {
       "type": "text",
+      "id": "pack_1_badge",
+      "label": "1-Pack badge",
+      "default": "Starter"
+    },
+    {
+      "type": "text",
       "id": "pack_1_savings",
       "label": "1-Pack meta text",
       "default": "Starter option"
@@ -1060,6 +1076,12 @@
       "id": "pack_4_sub",
       "label": "4-Pack subtitle",
       "default": "For family cars / backup stock"
+    },
+    {
+      "type": "text",
+      "id": "pack_4_badge",
+      "label": "4-Pack badge",
+      "default": "Family Bundle"
     },
     {
       "type": "text",
