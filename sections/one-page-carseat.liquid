@@ -281,6 +281,16 @@
                     {% endfor %}
                     {% if option_is_pack_loop %}
                       {% for value in option.values %}
+                        {% assign normalized_value = value | downcase | strip %}
+                        {% assign normalized_value = normalized_value | remove: 'pack' | remove: '-' | remove: ' ' %}
+                        {% assign pack_badge_text = '' %}
+                        {% if normalized_value == '1' %}
+                          {% assign pack_badge_text = section.settings.pack_1_badge %}
+                        {% elsif normalized_value == '2' %}
+                          {% assign pack_badge_text = section.settings.pack_2_badge %}
+                        {% elsif normalized_value == '4' %}
+                          {% assign pack_badge_text = section.settings.pack_4_badge %}
+                        {% endif %}
                         <label class="opc-pack-card{% if value == current_pack_option_value %} is-active{% endif %}" data-pack-card="{{ value | escape }}">
                           <input
                             type="radio"
@@ -289,7 +299,12 @@
                             data-pack-radio
                             {% if value == current_pack_option_value %}checked{% endif %}
                           >
-                          <span class="opc-pack-card__title">{{ value }}</span>
+                          <span class="opc-pack-card__title">
+                            {{ value }}
+                            {% if pack_badge_text != blank %}
+                              <span class="opc-inline-badge">{{ pack_badge_text }}</span>
+                            {% endif %}
+                          </span>
                         </label>
                       {% endfor %}
                       {% break %}
@@ -304,7 +319,12 @@
                       data-pack-radio
                       {% if default_pack == '1' %}checked{% endif %}
                     >
-                    <span class="opc-pack-card__title">{{ section.settings.pack_1_label | default: '1-Pack' }}</span>
+                    <span class="opc-pack-card__title">
+                      {{ section.settings.pack_1_label | default: '1-Pack' }}
+                      {% if section.settings.pack_1_badge != blank %}
+                        <span class="opc-inline-badge">{{ section.settings.pack_1_badge }}</span>
+                      {% endif %}
+                    </span>
                     {% if section.settings.pack_1_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_1_sub }}</span>{% endif %}
                     {% if section.settings.pack_1_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_1_savings }}</span>{% endif %}
                   </label>
@@ -335,7 +355,12 @@
                       data-pack-radio
                       {% if default_pack == '4' %}checked{% endif %}
                     >
-                    <span class="opc-pack-card__title">{{ section.settings.pack_4_label | default: '4-Pack' }}</span>
+                    <span class="opc-pack-card__title">
+                      {{ section.settings.pack_4_label | default: '4-Pack' }}
+                      {% if section.settings.pack_4_badge != blank %}
+                        <span class="opc-inline-badge">{{ section.settings.pack_4_badge }}</span>
+                      {% endif %}
+                    </span>
                     {% if section.settings.pack_4_sub != blank %}<span class="opc-pack-card__sub">{{ section.settings.pack_4_sub }}</span>{% endif %}
                     {% if section.settings.pack_4_savings != blank %}<span class="opc-pack-card__meta">{{ section.settings.pack_4_savings }}</span>{% endif %}
                   </label>
@@ -1019,6 +1044,12 @@
     },
     {
       "type": "text",
+      "id": "pack_1_badge",
+      "label": "1-Pack badge",
+      "default": "Starter Pick"
+    },
+    {
+      "type": "text",
       "id": "pack_1_savings",
       "label": "1-Pack meta text",
       "default": "Starter option"
@@ -1060,6 +1091,12 @@
       "id": "pack_4_sub",
       "label": "4-Pack subtitle",
       "default": "For family cars / backup stock"
+    },
+    {
+      "type": "text",
+      "id": "pack_4_badge",
+      "label": "4-Pack badge",
+      "default": "Family Value"
     },
     {
       "type": "text",
